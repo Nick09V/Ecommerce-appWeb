@@ -9,9 +9,15 @@ pool.on('error', (error) => {
 });
 
 const connectPostgres = async () => {
-  const client = await pool.connect();
-  client.release();
-  return pool;
+  try {
+    const client = await pool.connect();
+    client.release();
+    logger.info('PostgreSQL connected');
+    return pool;
+  } catch (error) {
+    logger.error('PostgreSQL connection failed', error);
+    throw error;
+  }
 };
 
 module.exports = {
