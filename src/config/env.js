@@ -2,7 +2,7 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const requiredEnvs = ['POSTGRES_PASSWORD', 'REDIS_URL'];
+const requiredEnvs = ['POSTGRES_PASSWORD', 'REDIS_URL', 'SESSION_SECRET'];
 
 requiredEnvs.forEach((key) => {
   if (!process.env[key]) {
@@ -23,5 +23,8 @@ module.exports = {
   },
   redis: {
     url: process.env.REDIS_URL,
+  },
+  session: {
+    secret: process.env.SESSION_SECRET,
   },
 };
