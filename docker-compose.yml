@@ -16,6 +16,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ecommerce
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
     depends_on:
       postgres:
         condition: service_healthy

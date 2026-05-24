@@ -6,8 +6,11 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const { Server } = require('socket.io');
 const healthRoutes = require('./routes/health.routes');
+const authRoutes = require('./routes/auth.routes');
 const notFound = require('./middlewares/notFound.middleware');
 const errorHandler = require('./middlewares/errorHandler.middleware');
+const { requireAuth } = require('./middlewares/auth.middleware');
+const sessionMiddleware = require('./config/session');
 const registerSockets = require('./sockets');
 const { port, corsOrigin } = require('./config/env');
 const { connectPostgres } = require('./config/database');
@@ -33,7 +36,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', (req, res) => {
+// Session middleware
+app.use(sessionMiddleware);
+
+// Make session user data available in all EJS views
+app.use((req, res, next) => {
+  res.locals.user = req.session.userId
+    ? { id: req.session.userId, name: req.session.userName, email: req.session.userEmail }
+    : null;
+  next();
+});
+
+// Auth routes (public)
+app.use('/auth', authRoutes);
+
+// Protected home route
+app.get('/', requireAuth, (req, res) => {
   res.render('index');
 });
 
@@ -58,3 +76,4 @@ const bootstrap = async () => {
 };
 
 bootstrap();
+
