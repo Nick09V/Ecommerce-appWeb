@@ -9,7 +9,7 @@ const healthRoutes = require('./routes/health.routes');
 const notFound = require('./middlewares/notFound.middleware');
 const errorHandler = require('./middlewares/errorHandler.middleware');
 const registerSockets = require('./sockets');
-const { port } = require('./config/env');
+const { port, corsOrigin } = require('./config/env');
 const { connectPostgres } = require('./config/database');
 const { connectRedis } = require('./config/redis');
 const logger = require('./utils/logger');
@@ -18,7 +18,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: corsOrigin,
     methods: ['GET', 'POST'],
   },
 });

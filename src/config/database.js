@@ -1,10 +1,11 @@
 const { Pool } = require('pg');
 const { postgres } = require('./env');
+const logger = require('../utils/logger');
 
 const pool = new Pool(postgres);
 
 pool.on('error', (error) => {
-  console.error('PostgreSQL pool error:', error);
+  logger.error('PostgreSQL pool error:', error);
 });
 
 const connectPostgres = async () => {

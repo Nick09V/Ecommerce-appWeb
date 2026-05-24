@@ -56,3 +56,8 @@ Servicios:
 - App: `http://localhost:3000`
 - PostgreSQL: `localhost:5432`
 - Redis: `localhost:6379`
+
+Variables recomendadas en `.env`:
+- `POSTGRES_PASSWORD`
+- `REDIS_PASSWORD`
+- `CORS_ORIGIN`

@@ -5,6 +5,7 @@ dotenv.config();
 module.exports = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT) || 3000,
+  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   postgres: {
     host: process.env.POSTGRES_HOST || 'postgres',
     port: Number(process.env.POSTGRES_PORT) || 5432,
@@ -13,6 +14,6 @@ module.exports = {
     database: process.env.POSTGRES_DB || 'ecommerce',
   },
   redis: {
-    url: process.env.REDIS_URL || 'redis://redis:6379',
+    url: process.env.REDIS_URL || 'redis://:redis@redis:6379',
   },
 };
