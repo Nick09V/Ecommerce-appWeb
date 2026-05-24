@@ -39,6 +39,7 @@ project/
 ## Ejecutar local
 
 ```bash
+cp .env.example .env
 npm install
 npm run dev
 ```
