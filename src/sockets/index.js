@@ -4,6 +4,7 @@ const registerSockets = (io) => {
 
     socket.on('chat:message', (payload) => {
       if (typeof payload !== 'object' || payload === null) {
+        socket.emit('chat:error', { message: 'Formato de mensaje inválido' });
         return;
       }
 
@@ -11,6 +12,7 @@ const registerSockets = (io) => {
       const author = typeof payload.author === 'string' ? payload.author.trim() : 'Anónimo';
 
       if (!message || message.length > 500 || author.length > 100) {
+        socket.emit('chat:error', { message: 'Mensaje inválido o demasiado largo' });
         return;
       }
 
