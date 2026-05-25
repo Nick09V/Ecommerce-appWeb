@@ -5,8 +5,11 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const { Server } = require('socket.io');
+
 const healthRoutes = require('./routes/health.routes');
 const authRoutes = require('./routes/auth.routes');
+const inventoryRoutes = require('./routes/inventory.routes'); // 1. IMPORTAMOS LAS RUTAS DE INVENTARIO
+
 const notFound = require('./middlewares/notFound.middleware');
 const errorHandler = require('./middlewares/errorHandler.middleware');
 const { requireAuth } = require('./middlewares/auth.middleware');
@@ -44,15 +47,22 @@ app.use((req, res, next) => {
   res.locals.user = req.session.userId
     ? { id: req.session.userId, name: req.session.userName, email: req.session.userEmail }
     : null;
+
+    res.locals.successMessage = req.session.successMessage || null;
+   delete req.session.successMessage;
   next();
 });
 
 // Auth routes (public)
 app.use('/auth', authRoutes);
 
-// Protected home route
+// 2. REGISTRAMOS EL MÓDULO DE INVENTARIO
+app.use('/inventory', inventoryRoutes);
+
+// 3. ACTUALIZAMOS LA RUTA RAÍZ PARA QUE REDIRIJA AL CATÁLOGO
+// Mantenemos el requireAuth por seguridad antes de redirigir
 app.get('/', requireAuth, (req, res) => {
-  res.render('index');
+  res.redirect('/inventory');
 });
 
 app.use('/api', healthRoutes);
@@ -76,4 +86,3 @@ const bootstrap = async () => {
 };
 
 bootstrap();
-
