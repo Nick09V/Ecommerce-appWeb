@@ -9,6 +9,7 @@ const { Server } = require('socket.io');
 const healthRoutes = require('./routes/health.routes');
 const authRoutes = require('./routes/auth.routes');
 const inventoryRoutes = require('./routes/inventory.routes'); // 1. IMPORTAMOS LAS RUTAS DE INVENTARIO
+const chatRoutes = require('./routes/chat.routes');
 
 const notFound = require('./middlewares/notFound.middleware');
 const errorHandler = require('./middlewares/errorHandler.middleware');
@@ -29,10 +30,30 @@ const io = new Server(server, {
   },
 });
 
+const {createClient} = require('redis');
+const {createAdapter} = require('@socket.io/redis-adapter');
+
+const wrap = (middleware) => (socket, next) => middleware(socket.request, {}, next);
+
+io.use(wrap(sessionMiddleware));
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      // Permitir que el script de Socket.IO se ejecute dentro de nuestro EJS
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      // Permitir cargar imágenes (como tus placeholders)
+      imgSrc: ["'self'", "data:", "https://via.placeholder.com", "https:"],
+      // Permitir la conexión del WebSocket para el chat
+      connectSrc: ["'self'", "ws:", "wss:"],
+      upgradeInsecureRequests: [],
+    },
+  },
+}));
 app.use(cors({ origin: corsOrigin }));
 app.use(morgan('dev'));
 app.use(express.json());
@@ -58,6 +79,7 @@ app.use('/auth', authRoutes);
 
 // 2. REGISTRAMOS EL MÓDULO DE INVENTARIO
 app.use('/inventory', inventoryRoutes);
+app.use('/chat', chatRoutes);
 
 // 3. ACTUALIZAMOS LA RUTA RAÍZ PARA QUE REDIRIJA AL CATÁLOGO
 // Mantenemos el requireAuth por seguridad antes de redirigir
@@ -69,13 +91,21 @@ app.use('/api', healthRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-registerSockets(io);
+
 
 const bootstrap = async () => {
   try {
     await connectPostgres();
     await connectRedis();
 
+    const pubClient = createClient({ url: process.env.REDIS_URL });
+    const subClient = pubClient.duplicate();
+
+    await Promise.all([pubClient.connect(), subClient.connect()]);
+    io.adapter(createAdapter(pubClient, subClient));
+    logger.info('Redis adapter for Socket.IO initialized');
+    registerSockets(io);
+    
     server.listen(port, () => {
       logger.info(`Server running on port ${port}`);
     });

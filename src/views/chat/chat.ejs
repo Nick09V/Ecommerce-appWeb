@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/styles.css"> 
+    <style>
+        .chat-container { 
+            max-width: 800px; 
+            margin: 20px auto; 
+            border: 1px solid #ccc; 
+            border-radius: 8px; 
+            background-color: #fff; 
+            display: flex; 
+            flex-direction: column; 
+            height: 70vh; 
+        }
+        .chat-header { 
+            background-color: #f8f9fa; 
+            padding: 15px; 
+            border-bottom: 1px solid #eee; 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+        .chat-header img { 
+            width: 50px; 
+            height: 50px; 
+            object-fit: cover; 
+            border-radius: 4px; 
+            border: 1px solid #ccc;
+        }
+        .chat-messages { 
+            flex-grow: 1; 
+            padding: 20px; 
+            overflow-y: auto; 
+            background-color: #f4f7f6; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+        }
+        .message { 
+            max-width: 70%; 
+            padding: 10px 15px; 
+            border-radius: 15px; 
+            line-height: 1.4; 
+        }
+        .message-sent { 
+            align-self: flex-end; 
+            background-color: #007bff; 
+            color: white; 
+            border-bottom-right-radius: 2px; 
+        }
+        .message-received { 
+            align-self: flex-start; 
+            background-color: #e9ecef; 
+            color: #333; 
+            border-bottom-left-radius: 2px; 
+        }
+        .message-time { 
+            font-size: 0.75em; 
+            margin-top: 5px; 
+            opacity: 0.8; 
+            text-align: right; 
+            display: block; 
+        }
+        .chat-input-area { 
+            padding: 15px; 
+            background-color: #fff; 
+            border-top: 1px solid #eee; 
+            display: flex; 
+            gap: 10px; 
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+        .chat-input-area input { 
+            flex-grow: 1; 
+            padding: 10px; 
+            border: 1px solid #ccc; 
+            border-radius: 20px; 
+            outline: none; 
+        }
+        .chat-input-area button { 
+            background-color: #28a745; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 20px; 
+            cursor: pointer; 
+            font-weight: bold;
+        }
+        .chat-input-area button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <header style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background-color: #f8f9fa;">
+        <h1>Marketplace de Técnicos</h1>
+        <nav>
+            <a href="/inventory/detail/<%= item.id %>" style="margin-right: 15px;">&larr; Volver al Producto</a>
+            <form action="/auth/signout" method="POST" style="display: inline;">
+                <button type="submit">Cerrar Sesión</button>
+            </form>
+        </nav>
+    </header>
+
+    <main style="padding: 20px;">
+        <div class="chat-container">
+            <div class="chat-header">
+                <img src="<%= item.image_url || 'https://via.placeholder.com/50?text=Img' %>" alt="<%= item.title %>">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.1em;"><%= item.title %></h3>
+                    <p style="margin: 0; font-size: 0.95em; color: #007bff;">
+                        Conversando con: <strong><%= partner.first_name %> <%= partner.last_name %></strong>
+                    </p>
+                    <p style="margin: 0; font-size: 0.8em; color: #6c757d;">
+                        N° Parte: <%= item.part_number %>
+                    </p>
+                </div>
+                <div style="margin-left: auto; font-weight: bold; color: #28a745; font-size: 1.2em;">
+                    $<%= item.price %>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="messages-container">
+                <% if (typeof history !== 'undefined' && history.length > 0) { %>
+                    <% history.forEach(msg => { %>
+                        <div class="message <%= msg.sender_id === user.id ? 'message-sent' : 'message-received' %>">
+                            <%= msg.content %>
+                            <span class="message-time">
+                                <%= new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %>
+                            </span>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <div style="text-align: center; color: #6c757d; font-size: 0.9em; margin-top: 20px;" id="empty-state">
+                        No hay mensajes previos. ¡Inicia la conversación!
+                    </div>
+                <% } %>
+            </div>
+
+            <form class="chat-input-area" id="chat-form">
+                <input type="text" id="message-input" placeholder="Escribe tu mensaje aquí..." autocomplete="off" required>
+                <button type="submit">Enviar</button>
+            </form>
+        </div>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const socket = io();
+            
+            const form = document.getElementById('chat-form');
+            const input = document.getElementById('message-input');
+            const messagesContainer = document.getElementById('messages-container');
+            const emptyState = document.getElementById('empty-state');
+            
+            // Inyectamos los datos del backend a variables de JS
+            const inventoryId = parseInt("<%= item.id %>", 10);
+            const receiverId = parseInt("<%= partner.id %>", 10); 
+            
+            // Función para mantener el scroll siempre abajo
+            const scrollToBottom = () => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            };
+            
+            // Ejecutar al cargar la página por si hay historial
+            scrollToBottom();
+
+            // Función para dibujar un mensaje en pantalla
+            function appendMessage(text, isSent, timestamp = new Date()) {
+                if (emptyState) emptyState.style.display = 'none';
+
+                const msgDiv = document.createElement('div');
+                msgDiv.classList.add('message');
+                msgDiv.classList.add(isSent ? 'message-sent' : 'message-received');
+                
+                const timeStr = new Date(timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                msgDiv.innerHTML = `${text}<span class="message-time">${timeStr}</span>`;
+                
+                messagesContainer.appendChild(msgDiv);
+                scrollToBottom();
+            }
+
+            // Capturar el "submit" del formulario
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const msgText = input.value.trim();
+                
+                if (msgText) {
+                    socket.emit('chat:message', {
+                        message: msgText,
+                        inventoryId: inventoryId,
+                        receiverId: receiverId
+                    });
+                    input.value = ''; 
+                }
+            });
+
+            // Escuchar la confirmación de que MI mensaje se guardó y envió
+            socket.on('chat:sent_success', (savedMessage) => {
+                appendMessage(savedMessage.content, true, savedMessage.created_at);
+            });
+
+            // Escuchar si me llega un mensaje del vendedor
+            socket.on('chat:receive', (incomingMessage) => {
+                // Validamos que el mensaje sea de este repuesto específico
+                if (incomingMessage.inventory_id === inventoryId) {
+                    appendMessage(incomingMessage.content, false, incomingMessage.created_at);
+                }
+            });
+
+            // Mostrar alertas si el backend rechaza el mensaje
+            socket.on('chat:error', (errorData) => {
+                alert(`Error en el chat: ${errorData.message}`);
+            });
+        });
+    </script>
+</body>
+</html>
