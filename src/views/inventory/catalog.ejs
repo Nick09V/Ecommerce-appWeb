@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/styles.css"> 
+    <style>
+        .grid-container { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; }
+        .card { border: 1px solid #ccc; padding: 15px; border-radius: 8px; width: 300px; }
+        .card img { max-width: 100%; height: auto; border-radius: 4px; }
+        .badge { background-color: #6c757d; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.8em; }
+        .actions { margin-top: 15px; display: flex; gap: 10px; }
+    </style>
+</head>
+<body>
+    <header style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background-color: #f8f9fa;">
+        <h1>Catálogo de Repuestos</h1>
+        <nav>
+            <a href="/inventory/create" style="margin-right: 15px;">+ Publicar Repuesto</a>
+            <a href="/inventory/my-publications" style="margin-right: 15px; font-weight: bold;">Mis Publicaciones</a>
+            <a href="/chat" style="margin-right: 15px; font-weight: bold; color: #007bff;">💬 Mensajes</a>
+            <form action="/auth/signout" method="POST" style="display: inline;">
+                <button type="submit">Cerrar Sesión</button>
+            </form>
+        </nav>
+    </header>
+
+    <main style="padding: 20px;">
+        <form action="/inventory" method="GET" style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
+            <input type="text" name="search" placeholder="Buscar por chasis, # parte..." value="<%= search %>" style="padding: 8px; width: 300px;">
+            
+            <select name="sortBy" style="padding: 8px;">
+                <option value="date_desc" <%= sortBy === 'date_desc' ? 'selected' : '' %>>Más recientes</option>
+                <option value="price_asc" <%= sortBy === 'price_asc' ? 'selected' : '' %>>Menor precio</option>
+                <option value="price_desc" <%= sortBy === 'price_desc' ? 'selected' : '' %>>Mayor precio</option>
+            </select>
+
+            <button type="submit" style="padding: 8px;">Buscar</button>
+            <a href="/inventory">Limpiar</a>
+        </form>
+
+        <div class="grid-container">
+            <% if (items.length === 0) { %>
+                <p>No se encontraron placas disponibles de otros técnicos en este momento.</p>
+            <% } else { %>
+                <% items.forEach(item => { %>
+                    <div class="card">
+                        <img src="<%= item.image_url || 'https://via.placeholder.com/300?text=Sin+Imagen' %>" alt="<%= item.title %>">
+                        
+                        <h3><%= item.title %></h3>
+                        <p><strong>N° Parte:</strong> <%= item.part_number %></p>
+                        <p><strong>Chasis:</strong> <%= item.chassis_model %></p>
+                        <h2 style="color: #28a745;">$<%= item.price %></h2>
+                        
+                        <span class="badge">De otro técnico</span>
+                        <div class="actions">
+                            <a href="/inventory/detail/<%= item.id %>"><button>Ver Detalles / Contactar</button></a>
+                        </div>
+                    </div>
+                <% }) %>
+            <% } %>
+        </div>
+    </main>
+</body>
+</html>
