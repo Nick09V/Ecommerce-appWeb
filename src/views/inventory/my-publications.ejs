@@ -4,68 +4,103 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= title %></title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    
     <link rel="stylesheet" href="/css/styles.css"> 
-    <style>
-        .grid-container { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; }
-        .card { border: 1px solid #ccc; padding: 15px; border-radius: 8px; width: 300px; border-left: 4px solid #007bff; }
-        .card img { max-width: 100%; height: auto; border-radius: 4px; }
-        .badge { background-color: #007bff; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.8em; }
-        .actions { margin-top: 15px; display: flex; gap: 10px; }
-    </style>
 </head>
 <body>
-    <header style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background-color: #e9ecef;">
-        <h1>Gestión de mi Inventario</h1>
+    <div class="bg-orbs">
+        <div class="orb orb--1"></div>
+        <div class="orb orb--2"></div>
+        <div class="orb orb--3"></div>
+    </div>
+
+    <header>
+        <h1>Marketplace de Técnicos</h1>
         <nav>
-            <a href="/inventory/create" style="margin-right: 15px;">+ Publicar Repuesto</a>
-            <a href="/inventory" style="margin-right: 15px; font-weight: bold; color: #28a745;">Ir al Catálogo General</a>
-            <a href="/chat" style="margin-right: 15px; font-weight: bold; color: #007bff;">💬 Mensajes</a>
-            <form action="/auth/signout" method="POST" style="display: inline;">
-                <button type="submit">Cerrar Sesión</button>
+            <a href="/inventory/create">+ Publicar Repuesto</a>
+            <a href="/inventory" style="color: var(--accent); font-weight: 600;">Catálogo General</a>
+            <a href="/chat" style="display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                Mensajes
+            </a>
+            <form action="/auth/signout" method="POST" style="display: inline; margin: 0;">
+                <button type="submit" class="btn btn-outline" style="padding: 0.4rem 0.8rem;">Cerrar Sesión</button>
             </form>
         </nav>
     </header>
 
-    <main style="padding: 20px;">
+    <main style="padding: 2rem; max-width: 1200px; margin: 0 auto; position: relative; z-index: 1;">
+        
         <% if (successMessage) { %>
-    <div style="background-color: #d4edda; color: #155724; padding: 15px; border: 1px solid #c3e6cb; border-radius: 4px; margin-bottom: 20px;">
-         <%= successMessage %>
-    </div>
+            <div class="alert-success glass-panel">
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <%= successMessage %>
+            </div>
         <% } %>
-        <h2>Mis Componentes Publicados</h2>
 
-        <form action="/inventory/my-publications" method="GET" style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
-            <input type="text" name="search" placeholder="Buscar en mis placas..." value="<%= search %>" style="padding: 8px; width: 300px;">
+        <div style="margin-bottom: 2rem;">
+            <h2 style="color: var(--text-main); font-size: 1.75rem; margin: 0;">Mis Componentes Publicados</h2>
+            <p style="color: var(--text-muted); margin-top: 0.5rem;">Gestiona el stock que has puesto a disposición de otros técnicos.</p>
+        </div>
+
+        <form class="search-bar glass-panel" action="/inventory/my-publications" method="GET">
+            <input type="text" name="search" placeholder="Buscar en mis placas..." value="<%= search %>">
             
-            <select name="sortBy" style="padding: 8px;">
+            <select name="sortBy">
                 <option value="date_desc" <%= sortBy === 'date_desc' ? 'selected' : '' %>>Más recientes</option>
                 <option value="price_asc" <%= sortBy === 'price_asc' ? 'selected' : '' %>>Menor precio</option>
                 <option value="price_desc" <%= sortBy === 'price_desc' ? 'selected' : '' %>>Mayor precio</option>
             </select>
 
-            <button type="submit" style="padding: 8px;">Filtrar mi stock</button>
-            <a href="/inventory/my-publications">Limpiar</a>
+            <button type="submit" class="btn">Filtrar mi stock</button>
+            <a href="/inventory/my-publications" class="btn btn-outline">Limpiar</a>
         </form>
 
         <div class="grid-container">
             <% if (items.length === 0) { %>
-                <p>Aún no has publicado ningún componente. ¡Anímate a subir tu primer repuesto!</p>
+                <div class="glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 4rem 2rem; border-radius: var(--radius);">
+                    <svg width="48" height="48" fill="none" stroke="var(--text-dim)" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom: 1rem;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                    </svg>
+                    <p style="color: var(--text-muted); font-size: 1.125rem;">Aún no has publicado ningún componente.</p>
+                    <a href="/inventory/create" class="btn" style="margin-top: 1rem;">¡Sube tu primer repuesto!</a>
+                </div>
             <% } else { %>
                 <% items.forEach(item => { %>
-                    <div class="card">
-                        <img src="<%= item.image_url || 'https://via.placeholder.com/300?text=Sin+Imagen' %>" alt="<%= item.title %>">
+                    <div class="card glass-panel" style="border-left: 4px solid var(--accent);">
+                        <img src="<%= item.image_url || 'https://via.placeholder.com/300/1e1b4b/4f46e5?text=Sin+Imagen' %>" alt="<%= item.title %>">
                         
-                        <h3><%= item.title %></h3>
-                        <p><strong>N° Parte:</strong> <%= item.part_number %></p>
-                        <p><strong>Chasis:</strong> <%= item.chassis_model %></p>
-                        <h2 style="color: #007bff;">$<%= item.price %></h2>
-                        
-                        <span class="badge">Tu publicación</span>
-                        <div class="actions">
-                            <a href="/inventory/<%= item.id %>/edit"><button>Editar</button></a>
-                            <form action="/inventory/<%= item.id %>/delete" method="POST" onsubmit="return confirm('¿Seguro que deseas eliminar esta placa definitivamente?');">
-                                <button type="submit" style="color: red;">Eliminar</button>
-                            </form>
+                        <div class="card-content">
+                            <span class="badge" style="background: rgba(129, 140, 248, 0.15); color: var(--accent); border-color: rgba(129, 140, 248, 0.3);">
+                                Tu publicación
+                            </span>
+                            
+                            <h3 class="card-title"><%= item.title %></h3>
+                            
+                            <div class="card-specs">
+                                <div><strong>N° Parte:</strong> <%= item.part_number %></div>
+                                <div><strong>Chasis:</strong> <%= item.chassis_model %></div>
+                            </div>
+                            
+                            <div class="card-price" style="background: none; -webkit-text-fill-color: var(--accent);"><%= item.price %></div>
+                            
+                            <div class="actions">
+                                <div class="btn-group" style="width: 100%;">
+                                    <a href="/inventory/<%= item.id %>/edit" class="btn btn-warning" style="flex: 1; text-align: center;">Editar</a>
+                                    
+                                    <form action="/inventory/<%= item.id %>/delete" method="POST" onsubmit="return confirm('¿Seguro que deseas eliminar esta placa definitivamente?');" style="margin: 0; flex: 1; display: flex;">
+                                        <button type="submit" class="btn btn-danger" style="width: 100%;">Eliminar</button>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 <% }) %>

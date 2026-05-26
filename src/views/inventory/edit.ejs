@@ -4,73 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= title %></title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    
     <link rel="stylesheet" href="/css/styles.css"> 
-    <style>
-        .form-container { 
-            max-width: 600px; 
-            margin: 20px auto; 
-            padding: 20px; 
-            border: 1px solid #ccc; 
-            border-radius: 8px; 
-            background-color: #fff;
-        }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-group input, .form-group textarea { 
-            width: 100%; 
-            padding: 8px; 
-            box-sizing: border-box; 
-            border: 1px solid #ccc; 
-            border-radius: 4px;
-        }
-        /* Estilo para el campo que no se puede editar */
-        .readonly-field {
-            background-color: #e9ecef;
-            cursor: not-allowed;
-            color: #6c757d;
-        }
-        .error-box { 
-            background-color: #f8d7da; 
-            color: #721c24; 
-            padding: 10px; 
-            border-radius: 4px; 
-            margin-bottom: 20px; 
-            border: 1px solid #f5c6cb;
-        }
-        .error-box ul { margin: 0; padding-left: 20px; }
-        .btn-update {
-            background-color: #007bff; 
-            color: white; 
-            padding: 10px 15px; 
-            border: none; 
-            border-radius: 4px; 
-            cursor: pointer;
-            font-size: 1em;
-        }
-        .btn-update:hover { background-color: #0069d9; }
-    </style>
 </head>
 <body>
-    <header style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background-color: #f8f9fa;">
+    <div class="bg-orbs">
+        <div class="orb orb--1"></div>
+        <div class="orb orb--2"></div>
+        <div class="orb orb--3"></div>
+    </div>
+
+    <header>
         <h1>Marketplace de Técnicos</h1>
         <nav>
-            <a href="/inventory/create" style="margin-right: 15px;">+ Publicar Repuesto</a>
-            <a href="/inventory" style="margin-right: 15px;">Catálogo General</a>
-            <a href="/inventory/my-publications" style="margin-right: 15px;">Mis Publicaciones</a>
-            <form action="/auth/signout" method="POST" style="display: inline;">
-                <button type="submit">Cerrar Sesión</button>
+            <a href="/inventory/create">+ Publicar Repuesto</a>
+            <a href="/inventory">Catálogo General</a>
+            <a href="/inventory/my-publications">Mis Publicaciones</a>
+            <form action="/auth/signout" method="POST" style="display: inline; margin: 0;">
+                <button type="submit" class="btn btn-outline" style="padding: 0.4rem 0.8rem;">Cerrar Sesión</button>
             </form>
         </nav>
     </header>
 
-    <main style="padding: 20px;">
-        <div class="form-container">
-            <h2 style="color: #007bff;"><%= title %></h2>
-            <p style="font-size: 0.9em; color: #6c757d;">Estás modificando los datos de la placa ID: #<%= item.id %></p>
+    <main style="padding: 2rem; position: relative; z-index: 1;">
+        
+        <div class="form-container glass-panel">
+            
+            <div class="form-header">
+                <h2><%= title %></h2>
+                <p style="color: var(--accent); margin-top: 0.5rem; font-size: 0.875rem;">
+                    Estás modificando los datos de la placa ID: #<%= item.id %>
+                </p>
+            </div>
 
             <% if (errors && errors.length > 0) { %>
-                <div class="error-box">
-                    <strong>Por favor corrige lo siguiente:</strong>
+                <div class="alert-error">
+                    <strong style="display: block; margin-bottom: 0.5rem;">Por favor corrige lo siguiente:</strong>
                     <ul>
                         <% errors.forEach(err => { %>
                             <li><%= err.msg || err %></li>
@@ -80,6 +53,7 @@
             <% } %>
 
             <form action="/inventory/<%= item.id %>/edit" method="POST">
+                
                 <div class="form-group">
                     <label for="title">Título de la publicación</label>
                     <input type="text" id="title" name="title" value="<%= old.title || item.title %>" required>
@@ -87,8 +61,8 @@
 
                 <div class="form-group">
                     <label>Número de Parte (No editable)</label>
-                    <input type="text" value="<%= item.part_number %>" class="readonly-field" readonly>
-                    <small>La identidad técnica del repuesto no puede ser modificada.</small>
+                    <input type="text" value="<%= item.part_number %>" readonly>
+                    <div class="form-helper">La identidad técnica del repuesto no puede ser modificada.</div>
                 </div>
 
                 <div class="form-group">
@@ -103,12 +77,12 @@
 
                 <div class="form-group">
                     <label for="description">Descripción y notas técnicas</label>
-                    <textarea id="description" name="description" rows="4"><%= old.description || item.description %></textarea>
+                    <textarea id="description" name="description"><%= old.description || item.description %></textarea>
                 </div>
 
-                <div style="margin-top: 20px;">
-                    <button type="submit" class="btn-update">Guardar Cambios</button>
-                    <a href="/inventory/my-publications" style="margin-left: 15px; color: #6c757d; text-decoration: none;">Cancelar</a>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-warning">Guardar Cambios</button>
+                    <a href="/inventory/detail/<%= item.id %>" class="btn btn-outline">Cancelar</a>
                 </div>
             </form>
         </div>

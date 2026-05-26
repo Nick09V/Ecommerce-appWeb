@@ -4,81 +4,76 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= title %></title>
-    <link rel="stylesheet" href="/css/styles.css">
-    <style>
-        .inbox-container { max-width: 800px; margin: 20px auto; padding: 20px; }
-        .chat-row { 
-            display: flex; 
-            align-items: center; 
-            padding: 15px; 
-            border: 1px solid #ddd; 
-            margin-bottom: 10px; 
-            border-radius: 8px; 
-            background: #fff;
-            text-decoration: none;
-            color: inherit;
-            transition: background-color 0.2s, box-shadow 0.2s;
-        }
-        .chat-row:hover { 
-            background-color: #f8f9fa; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-        .chat-img { 
-            width: 70px; 
-            height: 70px; 
-            object-fit: cover; 
-            border-radius: 8px; 
-            margin-right: 15px; 
-            border: 1px solid #eee;
-        }
-        .chat-info { flex-grow: 1; }
-        .chat-info h3 { margin: 0 0 5px 0; font-size: 1.1em; color: #007bff; }
-        .chat-info p { margin: 0; color: #495057; font-size: 0.95em; }
-        .chat-date { 
-            font-size: 0.85em; 
-            color: #6c757d; 
-            white-space: nowrap; 
-            margin-left: 15px;
-        }
-    </style>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    
+    <link rel="stylesheet" href="/css/styles.css"> 
 </head>
 <body>
-    <header style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background-color: #f8f9fa;">
+    <div class="bg-orbs">
+        <div class="orb orb--1"></div>
+        <div class="orb orb--2"></div>
+        <div class="orb orb--3"></div>
+    </div>
+
+    <header>
         <h1>Marketplace de Técnicos</h1>
         <nav>
-            <a href="/inventory" style="margin-right: 15px;">Catálogo General</a>
-            <a href="/inventory/my-publications" style="margin-right: 15px;">Mis Publicaciones</a>
-            <form action="/auth/signout" method="POST" style="display: inline;">
-                <button type="submit">Cerrar Sesión</button>
+            <a href="/inventory/create">+ Publicar Repuesto</a>
+            <a href="/inventory">Catálogo General</a>
+            <a href="/inventory/my-publications">Mis Publicaciones</a>
+            <form action="/auth/signout" method="POST" style="display: inline; margin: 0;">
+                <button type="submit" class="btn btn-outline" style="padding: 0.4rem 0.8rem;">Cerrar Sesión</button>
             </form>
         </nav>
     </header>
 
-    <main class="inbox-container">
-        <h2 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px;">
-            Bandeja de Mensajes
-        </h2>
-
-        <% if (conversations.length === 0) { %>
-            <div style="text-align: center; padding: 50px; border: 2px dashed #ccc; border-radius: 8px; color: #6c757d; background-color: #f8f9fa;">
-                <h3>Tu bandeja está vacía</h3>
-                <p>No tienes conversaciones activas. Busca repuestos en el catálogo e inicia un chat.</p>
-                <a href="/inventory" style="display: inline-block; margin-top: 15px; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Ir al Catálogo</a>
+    <main style="padding: 2rem; position: relative; z-index: 1;">
+        
+        <div class="inbox-wrapper glass-panel" style="padding: 2.5rem;">
+            
+            <div class="inbox-header">
+                <h2>Bandeja de Mensajes</h2>
+                <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.9375rem;">
+                    Revisa tus conversaciones activas sobre repuestos.
+                </p>
             </div>
-        <% } else { %>
-            <% conversations.forEach(conv => { %>
-               <a href="/chat/<%= conv.inventory_id %>?user=<%= conv.other_user_id %>" class="chat-row">
-                    <img src="<%= conv.image_url || 'https://via.placeholder.com/70?text=Img' %>" alt="Producto" class="chat-img">
-                    <div class="chat-info">
-                        <h3><%= conv.product_title %></h3>
-                        <p><strong><%= conv.first_name %> <%= conv.last_name %>:</strong> <%= conv.last_message %></p>
-                    </div>
-                    <div class="chat-date">
-                        <%= new Date(conv.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' }) %>
-                    </div>
-                </a>
-            <% }) %>
-        <% } %>
+
+            <% if (conversations.length === 0) { %>
+                
+                <div class="empty-inbox">
+                    <svg width="48" height="48" fill="none" stroke="var(--text-dim)" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom: 1rem;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                    </svg>
+                    <h3 style="color: var(--text-main); margin: 0 0 0.5rem 0; font-size: 1.25rem;">Tu bandeja está vacía</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">No tienes conversaciones activas. Busca repuestos en el catálogo e inicia un chat.</p>
+                    <a href="/inventory" class="btn">Ir al Catálogo General</a>
+                </div>
+
+            <% } else { %>
+                
+                <div class="conversations-list">
+                    <% conversations.forEach(conv => { %>
+                        <a href="/chat/<%= conv.inventory_id %>?user=<%= conv.other_user_id %>" class="chat-row">
+                            <img src="<%= conv.image_url || 'https://via.placeholder.com/64/1e1b4b/4f46e5?text=Img' %>" alt="Producto" class="chat-img">
+                            
+                            <div class="chat-info">
+                                <h3><%= conv.product_title %></h3>
+                                <p><strong><%= conv.first_name %> <%= conv.last_name %>:</strong> <%= conv.last_message %></p>
+                            </div>
+                            
+                            <div class="chat-date">
+                                <%= new Date(conv.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' }) %>
+                            </div>
+                        </a>
+                    <% }) %>
+                </div>
+
+            <% } %>
+            
+        </div>
     </main>
 </body>
 </html>
