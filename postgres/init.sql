@@ -1,5 +1,5 @@
 -- 1. Tabla de Health Checks
-CREATE TABLE IF NOT EXISTS health_checks (
+/*CREATE TABLE IF NOT EXISTS health_checks (
   id SERIAL PRIMARY KEY,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   source VARCHAR(50) NOT NULL DEFAULT 'bootstrap'
@@ -71,4 +71,73 @@ VALUES
   
   -- Esta placa es de Pedro (user_id = 2)
   (2, 'EAX67133003', '43UJ6200', 'Mainboard LG 43"', 'Placa main funcionando correctamente.', 60.00, '/uploads/mainboard_lg.jpg')
-ON CONFLICT DO NOTHING;
+ON CONFLICT DO NOTHING;*/
+-- Revocar privilegios por defecto del esquema public por seguridad
+
+
+-- Revocar privilegios por defecto del esquema public
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+
+-- ==========================================
+-- MICROSERVICIO: AUTH
+-- ==========================================
+CREATE USER auth_user WITH PASSWORD 'auth_password_123';
+CREATE SCHEMA auth_schema AUTHORIZATION auth_user;
+GRANT ALL ON SCHEMA auth_schema TO auth_user;
+
+-- Crear tabla apuntando explícitamente al esquema de auth
+CREATE TABLE auth_schema.users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL
+);
+
+-- Darle propiedad absoluta de la tabla al usuario del microservicio
+ALTER TABLE auth_schema.users OWNER TO auth_user;
+
+-- Insert inicial (Semilla)
+INSERT INTO auth_schema.users (email, password, name) 
+VALUES ('admin@tienda.com', 'hash_de_password', 'Admin Principal');
+
+
+-- ==========================================
+-- MICROSERVICIO: INVENTORY
+-- ==========================================
+CREATE USER inventory_user WITH PASSWORD 'inventory_password_123';
+CREATE SCHEMA inventory_schema AUTHORIZATION inventory_user;
+GRANT ALL ON SCHEMA inventory_schema TO inventory_user;
+
+-- Crear tabla apuntando explícitamente al esquema de inventory
+CREATE TABLE inventory_schema.products (
+    id SERIAL PRIMARY KEY,
+    seller_id INTEGER NOT NULL, -- Hace referencia lógica al usuario, pero NO hay Foreign Key estricta entre esquemas
+    title VARCHAR(255) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    stock INTEGER NOT NULL
+);
+
+ALTER TABLE inventory_schema.products OWNER TO inventory_user;
+
+-- Inserts iniciales (Semilla)
+INSERT INTO inventory_schema.products (seller_id, title, price, stock) 
+VALUES (1, 'Laptop Pro', 1200.50, 10),
+       (1, 'Teclado Mecánico', 85.00, 25);
+
+
+-- ==========================================
+-- MICROSERVICIO: CHAT
+-- ==========================================
+CREATE USER chat_user WITH PASSWORD 'chat_password_123';
+CREATE SCHEMA chat_schema AUTHORIZATION chat_user;
+GRANT ALL ON SCHEMA chat_schema TO chat_user;
+
+CREATE TABLE chat_schema.messages (
+    id SERIAL PRIMARY KEY,
+    sender_id INTEGER NOT NULL,
+    receiver_id INTEGER NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE chat_schema.messages OWNER TO chat_user;
