@@ -61,6 +61,8 @@ services:
     environment:
       - DATABASE_URL=${AUTH_DB_URL}
       - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=3000
     depends_on:
       - postgres
       - redis
@@ -72,6 +74,8 @@ services:
     environment:
       - DATABASE_URL=${INVENTORY_DB_URL}
       - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=3000
     depends_on:
       - postgres
       - redis
@@ -83,6 +87,8 @@ services:
     environment:
       - DATABASE_URL=${CHAT_DB_URL}
       - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=3000
     depends_on:
       - postgres
       - redis
