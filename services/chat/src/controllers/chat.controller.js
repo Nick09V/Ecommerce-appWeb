@@ -30,13 +30,13 @@ const getConversation = async (req, res, next) => {
 const sendMessage = async (req, res, next) => {
   try {
     const senderId = req.user.id;
-    const { receiverId, message } = req.body;
+    const { receiverId, inventoryId, message } = req.body;
 
     if (!receiverId) {
       return res.status(400).json({ message: 'El ID del destinatario (receiverId) es obligatorio' });
     }
 
-    const savedMessage = await chatService.sendMessage({ senderId, receiverId, message });
+    const savedMessage = await chatService.sendMessage({ senderId, receiverId, inventoryId, message });
     res.status(201).json({ message: savedMessage });
   } catch (error) {
     next(error);

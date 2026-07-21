@@ -114,15 +114,16 @@ CREATE TABLE inventory_schema.products (
     seller_id INTEGER NOT NULL, -- Hace referencia lógica al usuario, pero NO hay Foreign Key estricta entre esquemas
     title VARCHAR(255) NOT NULL,
     price DECIMAL(10,2) NOT NULL,
-    stock INTEGER NOT NULL
+    stock INTEGER NOT NULL,
+    description TEXT
 );
 
 ALTER TABLE inventory_schema.products OWNER TO inventory_user;
 
 -- Inserts iniciales (Semilla)
-INSERT INTO inventory_schema.products (seller_id, title, price, stock) 
-VALUES (1, 'Laptop Pro', 1200.50, 10),
-       (1, 'Teclado Mecánico', 85.00, 25);
+INSERT INTO inventory_schema.products (seller_id, title, price, stock, description) 
+VALUES (1, 'Laptop Pro', 1200.50, 10, 'Laptop de alta gama para profesionales'),
+       (1, 'Teclado Mecánico', 85.00, 25, 'Teclado mecánico RGB retroiluminado');
 
 
 -- ==========================================
@@ -136,6 +137,7 @@ CREATE TABLE chat_schema.messages (
     id SERIAL PRIMARY KEY,
     sender_id INTEGER NOT NULL,
     receiver_id INTEGER NOT NULL,
+    inventory_id INTEGER,
     message TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

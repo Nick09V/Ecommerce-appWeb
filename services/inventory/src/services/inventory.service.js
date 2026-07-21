@@ -61,6 +61,24 @@ const updateProduct = async (id, sellerId, updateData) => {
   }
 
   const updatedItem = await inventoryRepository.update(id, sellerId, updateData);
+
+  // Detectar si el stock llegó a 0 y publicar evento StockDepleted
+  if (updatedItem && updatedItem.stock === 0) {
+    try {
+      const eventPayload = JSON.stringify({
+        event: 'StockDepleted',
+        product_id: updatedItem.id,
+        title: updatedItem.title,
+        seller_id: sellerId,
+        timestamp: new Date().toISOString(),
+      });
+      await redisClient.publish('inventory.events', eventPayload);
+      logger.info(`Evento StockDepleted publicado para product_id: ${updatedItem.id}`);
+    } catch (pubError) {
+      logger.error('Error publicando evento StockDepleted:', pubError);
+    }
+  }
+
   return updatedItem;
 };
 

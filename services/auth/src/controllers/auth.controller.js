@@ -40,6 +40,15 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+const deleteAccount = async (req, res, next) => {
+  try {
+    await authService.deleteAccount(req.user.id);
+    res.status(200).json({ message: 'Cuenta eliminada exitosamente' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const health = async (req, res) => {
   const { pool } = require('../config/database');
   const { redisClient } = require('../config/redis');
@@ -71,5 +80,6 @@ module.exports = {
   signin,
   getProfile,
   resetPassword,
+  deleteAccount,
   health,
 };

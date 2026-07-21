@@ -87,9 +87,37 @@ const resetPassword = async (email, newPassword) => {
   return true;
 };
 
+const deleteAccount = async (userId) => {
+  const user = await authRepository.findById(userId);
+  if (!user) {
+    const error = new Error('Usuario no encontrado');
+    error.status = 404;
+    throw error;
+  }
+
+  await authRepository.deleteUser(userId);
+
+  // Publicar evento UserDeleted en Redis Pub/Sub
+  try {
+    const eventPayload = JSON.stringify({
+      event: 'UserDeleted',
+      user_id: userId,
+      email: user.email,
+      timestamp: new Date().toISOString(),
+    });
+    await redisClient.publish('auth.events', eventPayload);
+    logger.info(`Evento UserDeleted publicado para user_id: ${userId}`);
+  } catch (pubError) {
+    logger.error('Error publicando evento UserDeleted:', pubError);
+  }
+
+  return true;
+};
+
 module.exports = {
   register,
   login,
   getProfile,
   resetPassword,
+  deleteAccount,
 };

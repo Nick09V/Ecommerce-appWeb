@@ -34,9 +34,18 @@ const updatePassword = async (email, passwordHash) => {
   return rowCount > 0;
 };
 
+const deleteUser = async (id) => {
+  const { rowCount } = await pool.query(
+    'DELETE FROM auth_schema.users WHERE id = $1',
+    [id]
+  );
+  return rowCount > 0;
+};
+
 module.exports = {
   findByEmail,
   findById,
   createUser,
   updatePassword,
+  deleteUser,
 };

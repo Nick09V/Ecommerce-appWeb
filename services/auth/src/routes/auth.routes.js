@@ -18,5 +18,6 @@ router.post('/signup', signupRules, validate, authController.signup);
 router.post('/signin', signinRules, validate, authController.signin);
 router.get('/me', requireAuth, authController.getProfile);
 router.post('/reset-password', resetPasswordRules, validate, authController.resetPassword);
+router.delete('/account', requireAuth, authController.deleteAccount);
 
 module.exports = router;

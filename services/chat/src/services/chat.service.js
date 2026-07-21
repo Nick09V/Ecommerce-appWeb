@@ -10,7 +10,7 @@ const getConversation = async (inventoryId, userId, partnerId) => {
   return await chatRepository.getConversation(inventoryId, userId, partnerId);
 };
 
-const sendMessage = async ({ senderId, receiverId, message }) => {
+const sendMessage = async ({ senderId, receiverId, inventoryId, message }) => {
   if (!message || !message.trim()) {
     const error = new Error('El mensaje no puede estar vacío');
     error.status = 400;
@@ -26,6 +26,7 @@ const sendMessage = async ({ senderId, receiverId, message }) => {
   const savedMessage = await chatRepository.createMessage({
     senderId,
     receiverId,
+    inventoryId: inventoryId || null,
     message: message.trim(),
   });
 
