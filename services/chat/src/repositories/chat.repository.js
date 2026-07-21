@@ -2,21 +2,25 @@ const { pool } = require('../config/database');
 
 const getInbox = async (userId) => {
   const query = `
-    SELECT DISTINCT ON (m.sender_id, m.receiver_id)
-      m.id,
-      m.sender_id,
-      m.receiver_id,
-      m.inventory_id,
-      m.message,
-      m.created_at
-    FROM chat_schema.messages m
-    WHERE m.sender_id = $1 OR m.receiver_id = $1
-    ORDER BY 
-      CASE 
-        WHEN m.sender_id = $1 THEN m.receiver_id 
-        ELSE m.sender_id 
-      END,
-      m.created_at DESC
+    SELECT * FROM (
+      SELECT DISTINCT ON (
+        LEAST(m.sender_id, m.receiver_id), 
+        GREATEST(m.sender_id, m.receiver_id)
+      )
+        m.id,
+        m.sender_id,
+        m.receiver_id,
+        m.inventory_id,
+        m.message,
+        m.created_at
+      FROM chat_schema.messages m
+      WHERE m.sender_id = $1 OR m.receiver_id = $1
+      ORDER BY 
+        LEAST(m.sender_id, m.receiver_id), 
+        GREATEST(m.sender_id, m.receiver_id),
+        m.created_at DESC
+    ) AS subquery
+    ORDER BY created_at DESC;
   `;
   const { rows } = await pool.query(query, [userId]);
   return rows;

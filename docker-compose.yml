@@ -38,10 +38,13 @@ services:
     networks:
       - app-network
 
-  # 4. Orquestadores (BFFs)
+# 4. Orquestadores (BFFs)
   bff-web:
     build: ./bff/web
+    ports:
+      - "3000:3000"   # Mapea el 3000 interno al 3000 local
     environment:
+      - PORT=3000
       - AUTH_SERVICE_URL=http://auth-service:3001
       - INVENTORY_SERVICE_URL=http://inventory-service:3002
       - CHAT_SERVICE_URL=http://chat-service:3003
@@ -50,7 +53,10 @@ services:
 
   bff-admin:
     build: ./bff/admin
+    ports:
+      - "3004:3000"   # Mapea el 3000 interno al 3004 local
     environment:
+      - PORT=3000
       - AUTH_SERVICE_URL=http://auth-service:3001
       - INVENTORY_SERVICE_URL=http://inventory-service:3002
       - CHAT_SERVICE_URL=http://chat-service:3003

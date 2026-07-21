@@ -13,10 +13,11 @@ const authenticateToken = async (req, res, next) => {
       headers: { Authorization: authHeader }
     });
 
-    req.user = response.data.user || response.data;
+    req.user = response.data.user;
     next();
   } catch (error) {
-    return res.status(error.response?.status || 401).json({ error: 'Sesión inválida o token expirado' });
+    const status = error.response?.status || 401;
+    return res.status(status).json({ error: 'Sesión inválida o token expirado' });
   }
 };
 

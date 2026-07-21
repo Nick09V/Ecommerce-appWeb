@@ -90,7 +90,8 @@ CREATE TABLE auth_schema.users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    name VARCHAR(255) NOT NULL
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Darle propiedad absoluta de la tabla al usuario del microservicio
@@ -115,7 +116,9 @@ CREATE TABLE inventory_schema.products (
     title VARCHAR(255) NOT NULL,
     price DECIMAL(10,2) NOT NULL,
     stock INTEGER NOT NULL,
-    description TEXT
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- <-- AGREGADO
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- <-- AGREGADO
 );
 
 ALTER TABLE inventory_schema.products OWNER TO inventory_user;

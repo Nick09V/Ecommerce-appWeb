@@ -1,7 +1,6 @@
 const axios = require('axios');
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-service:3001';
-
 const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -13,10 +12,11 @@ const authenticateToken = async (req, res, next) => {
       headers: { Authorization: authHeader }
     });
 
-    req.user = response.data.user || response.data;
+    req.user = response.data.user;
     next();
   } catch (error) {
-    return res.status(error.response?.status || 401).json({ error: 'Sesión inválida o token expirado' });
+    const status = error.response?.status || 401;
+    return res.status(status).json({ error: 'Sesión inválida o token expirado' });
   }
 };
 
