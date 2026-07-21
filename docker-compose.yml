@@ -42,27 +42,31 @@ services:
   bff-web:
     build: ./bff/web
     environment:
-      - AUTH_SERVICE_URL=http://auth-service:3000
-      - INVENTORY_SERVICE_URL=http://inventory-service:3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - INVENTORY_SERVICE_URL=http://inventory-service:3002
+      - CHAT_SERVICE_URL=http://chat-service:3003
     networks:
       - app-network
 
   bff-admin:
     build: ./bff/admin
     environment:
-      - AUTH_SERVICE_URL=http://auth-service:3000
-      - INVENTORY_SERVICE_URL=http://inventory-service:3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - INVENTORY_SERVICE_URL=http://inventory-service:3002
+      - CHAT_SERVICE_URL=http://chat-service:3003
     networks:
       - app-network
 
   # 5. Microservicios Core
   auth-service:
     build: ./services/auth
+    ports:
+      - "3001:3001"
     environment:
       - DATABASE_URL=${AUTH_DB_URL}
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET}
-      - PORT=3000
+      - PORT=3001
     depends_on:
       - postgres
       - redis
@@ -71,11 +75,13 @@ services:
 
   inventory-service:
     build: ./services/inventory
+    ports:
+      - "3002:3002"
     environment:
       - DATABASE_URL=${INVENTORY_DB_URL}
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET}
-      - PORT=3000
+      - PORT=3002
     depends_on:
       - postgres
       - redis
@@ -84,11 +90,13 @@ services:
 
   chat-service:
     build: ./services/chat
+    ports:
+      - "3003:3003"
     environment:
       - DATABASE_URL=${CHAT_DB_URL}
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET}
-      - PORT=3000
+      - PORT=3003
     depends_on:
       - postgres
       - redis
