@@ -10,7 +10,7 @@ docker-compose up -d postgres redis
 docker logs ecommerce-appweb-postgres-1
 # Debe indicar: "database system is ready to accept connections"
 
-docker-compose up -d auth-service inventory-service chat-service bff-web bff-admin
+docker-compose up -d auth-service inventory-service chat-service bff-web bff-admin prometheus grafana
 
 
 ------------------------------------------------

@@ -120,16 +120,30 @@ services:
 
   # 7. Monitoreo (SRE)
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:latest
+    container_name: prometheus
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml # Ruta al archivo que crearemos
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
     networks:
-      - app-network
+      - app-network 
 
   grafana:
-    image: grafana/grafana
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3004:3000" # Expuesto en el 3004 para que no choque con tus BFFs
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
+    restart: unless-stopped
     networks:
       - app-network
 
@@ -156,3 +170,5 @@ networks:
 volumes:
   redis_data:
   postgres_data:
+  prometheus_data:
+  grafana_data:
