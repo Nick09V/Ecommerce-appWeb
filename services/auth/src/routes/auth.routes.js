@@ -1,23 +1,25 @@
-const axios = require('axios');
+const express = require('express');
+const authController = require('../controllers/auth.controller');
+const { requireAuth } = require('../middlewares/auth.middleware');
+const validate = require('../middlewares/validate.middleware');
+const {
+  signupRules,
+  signinRules,
+  resetPasswordRules,
+} = require('../validators/auth.validator');
 
-const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-service:3001';
+const router = express.Router();
 
-const authenticateToken = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: 'Acceso denegado: Token no proporcionado' });
-  }
+// Health check
+router.get('/health', authController.health);
 
-  try {
-    const response = await axios.get(`${AUTH_SERVICE_URL}/auth/me`, {
-      headers: { Authorization: authHeader }
-    });
+// Public routes
+router.post('/signup', signupRules, validate, authController.signup);
+router.post('/signin', signinRules, validate, authController.signin);
+router.post('/reset-password', resetPasswordRules, validate, authController.resetPassword);
 
-    req.user = response.data.user || response.data;
-    next();
-  } catch (error) {
-    return res.status(error.response?.status || 401).json({ error: 'Sesión inválida o token expirado' });
-  }
-};
+// Protected routes
+router.get('/me', requireAuth, authController.getProfile);
+router.delete('/account', requireAuth, authController.deleteAccount);
 
-module.exports = authenticateToken;
+module.exports = router;

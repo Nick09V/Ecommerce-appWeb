@@ -4,6 +4,10 @@ const logger = require('../utils/logger');
 
 const pool = new Pool({ connectionString: databaseUrl });
 
+pool.on('connect', (client) => {
+  client.query('SET search_path TO auth_schema, public');
+});
+
 pool.on('error', (error) => {
   logger.error('PostgreSQL pool error:', error);
 });

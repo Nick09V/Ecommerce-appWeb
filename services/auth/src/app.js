@@ -1,31 +1,35 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const morgan = require("morgan");
 
-const authRoutes = require('./routes/auth.routes');
-const errorHandler = require('./middlewares/errorHandler.middleware');
-const { getMetrics, trackRequest } = require('./utils/metrics');
-const { port, corsOrigin } = require('./config/env');
-const { connectPostgres } = require('./config/database');
-const { connectRedis } = require('./config/redis');
-const logger = require('./utils/logger');
+const authRoutes = require("./routes/auth.routes");
+const errorHandler = require("./middlewares/errorHandler.middleware");
+const { getMetrics, trackRequest } = require("./utils/metrics");
+const { port, corsOrigin } = require("./config/env");
+const { connectPostgres } = require("./config/database");
+const { connectRedis } = require("./config/redis");
+const logger = require("./utils/logger");
 
 const app = express();
 
 app.use(helmet());
 app.use(cors({ origin: corsOrigin }));
-app.use(morgan('dev'));
+app.use(morgan("dev"));
 app.use(express.json());
 
 // Metrics tracking
 app.use(trackRequest);
 
 // Metrics endpoint for Prometheus
-app.get('/metrics', getMetrics);
+app.get("/metrics", getMetrics);
 
 // Routes
-app.use('/auth', authRoutes);
+app.use("/auth", authRoutes);
+
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "UP", service: "Auth Service" });
+});
 
 // Error handler
 app.use(errorHandler);
@@ -39,7 +43,7 @@ const bootstrap = async () => {
       logger.info(`Auth Service running on port ${port}`);
     });
   } catch (error) {
-    logger.error('Auth Service bootstrap failed', error);
+    logger.error("Auth Service bootstrap failed", error);
     process.exit(1);
   }
 };
