@@ -54,7 +54,7 @@ services:
   bff-admin:
     build: ./bff/admin
     ports:
-      - "3004:3000"   # Mapea el 3000 interno al 3004 local
+      - "3005:3000"   # Mapea el 3000 interno al 3004 local
     environment:
       - PORT=3000
       - AUTH_SERVICE_URL=http://auth-service:3001
