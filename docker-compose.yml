@@ -38,29 +38,41 @@ services:
     networks:
       - app-network
 
-  # 4. Orquestadores (BFFs)
+# 4. Orquestadores (BFFs)
   bff-web:
     build: ./bff/web
+    ports:
+      - "3000:3000"   # Mapea el 3000 interno al 3000 local
     environment:
-      - AUTH_SERVICE_URL=http://auth-service:3000
-      - INVENTORY_SERVICE_URL=http://inventory-service:3000
+      - PORT=3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - INVENTORY_SERVICE_URL=http://inventory-service:3002
+      - CHAT_SERVICE_URL=http://chat-service:3003
     networks:
       - app-network
 
   bff-admin:
     build: ./bff/admin
+    ports:
+      - "3005:3000"   # Mapea el 3000 interno al 3004 local
     environment:
-      - AUTH_SERVICE_URL=http://auth-service:3000
-      - INVENTORY_SERVICE_URL=http://inventory-service:3000
+      - PORT=3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - INVENTORY_SERVICE_URL=http://inventory-service:3002
+      - CHAT_SERVICE_URL=http://chat-service:3003
     networks:
       - app-network
 
   # 5. Microservicios Core
   auth-service:
     build: ./services/auth
+    ports:
+      - "3001:3001"
     environment:
       - DATABASE_URL=${AUTH_DB_URL}
       - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=3001
     depends_on:
       - postgres
       - redis
@@ -69,9 +81,13 @@ services:
 
   inventory-service:
     build: ./services/inventory
+    ports:
+      - "3002:3002"
     environment:
       - DATABASE_URL=${INVENTORY_DB_URL}
       - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=3002
     depends_on:
       - postgres
       - redis
@@ -80,9 +96,13 @@ services:
 
   chat-service:
     build: ./services/chat
+    ports:
+      - "3003:3003"
     environment:
       - DATABASE_URL=${CHAT_DB_URL}
       - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=3003
     depends_on:
       - postgres
       - redis
@@ -100,19 +120,34 @@ services:
 
   # 7. Monitoreo (SRE)
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:latest
+    container_name: prometheus
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml # Ruta al archivo que crearemos
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
     networks:
-      - app-network
+      - app-network 
 
   grafana:
-    image: grafana/grafana
-    depends_on:
-      - prometheus
-    networks:
-      - app-network
-
+      image: grafana/grafana:latest
+      container_name: grafana
+      ports:
+        - "3004:3000"
+      environment:
+        - GF_SECURITY_ADMIN_USER=admin
+        - GF_SECURITY_ADMIN_PASSWORD=admin
+      volumes:
+        - grafana_data:/var/lib/grafana
+        - ./grafana/provisioning:/etc/grafana/provisioning
+        - ./grafana/dashboards:/etc/grafana/dashboards # <-- CORREGIDO AQUÍ
+      depends_on:
+        - prometheus
+      restart: unless-stopped
+      networks:
+        - app-network
   # 8. Base de Datos Local
   postgres:
     image: postgres:15-alpine
@@ -136,3 +171,5 @@ networks:
 volumes:
   redis_data:
   postgres_data:
+  prometheus_data:
+  grafana_data:

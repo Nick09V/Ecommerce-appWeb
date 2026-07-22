@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'bff-admin'
+    static_configs:
+      - targets: ['bff-admin:3000']
+
+  - job_name: 'bff-web'
+    static_configs:
+      - targets: ['bff-web:3000']
+
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['auth-service:3001']
+
+  - job_name: 'inventory-service'
+    static_configs:
+      - targets: ['inventory-service:3002']
+
+  - job_name: 'chat-service'
+    static_configs:
+      - targets: ['chat-service:3003']
