@@ -132,21 +132,22 @@ services:
       - app-network 
 
   grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3004:3000" # Expuesto en el 3004 para que no choque con tus BFFs
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - grafana_data:/var/lib/grafana
-    depends_on:
-      - prometheus
-    restart: unless-stopped
-    networks:
-      - app-network
-
+      image: grafana/grafana:latest
+      container_name: grafana
+      ports:
+        - "3004:3000"
+      environment:
+        - GF_SECURITY_ADMIN_USER=admin
+        - GF_SECURITY_ADMIN_PASSWORD=admin
+      volumes:
+        - grafana_data:/var/lib/grafana
+        - ./grafana/provisioning:/etc/grafana/provisioning
+        - ./grafana/dashboards:/etc/grafana/dashboards # <-- CORREGIDO AQUÍ
+      depends_on:
+        - prometheus
+      restart: unless-stopped
+      networks:
+        - app-network
   # 8. Base de Datos Local
   postgres:
     image: postgres:15-alpine
