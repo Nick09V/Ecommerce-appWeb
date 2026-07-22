@@ -89,8 +89,12 @@ GRANT ALL ON SCHEMA auth_schema TO auth_user;
 CREATE TABLE auth_schema.users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
+    password VARCHAR(255),
     name VARCHAR(255) NOT NULL,
+    role VARCHAR(30) NOT NULL DEFAULT 'user',
+    provider VARCHAR(30) NOT NULL DEFAULT 'local',
+    provider_id VARCHAR(255),
+    avatar_url TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -98,8 +102,8 @@ CREATE TABLE auth_schema.users (
 ALTER TABLE auth_schema.users OWNER TO auth_user;
 
 -- Insert inicial (Semilla)
-INSERT INTO auth_schema.users (email, password, name) 
-VALUES ('admin@tienda.com', 'hash_de_password', 'Admin Principal');
+INSERT INTO auth_schema.users (email, password, name, role) 
+VALUES ('admin@tienda.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6Ttxw5CqQ2V/K5Fkq9F9nS9cH5O6K', 'Admin Principal', 'admin');
 
 
 -- ==========================================

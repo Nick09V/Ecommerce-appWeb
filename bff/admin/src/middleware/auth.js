@@ -14,6 +14,9 @@ const authenticateToken = async (req, res, next) => {
     });
 
     req.user = response.data.user;
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Se requieren permisos de administrador' });
+    }
     next();
   } catch (error) {
     const status = error.response?.status || 401;

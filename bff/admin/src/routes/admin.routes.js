@@ -115,4 +115,59 @@ router.delete('/auth/account', authenticateToken, async (req, res) => {
   }
 });
 
+
+// --- OBSERVABILIDAD: salud, métricas y logs centralizados ---
+const PROMETHEUS_URL = process.env.PROMETHEUS_URL || 'http://prometheus:9090';
+const LOKI_URL = process.env.LOKI_URL || 'http://loki:3100';
+const monitoredServices = [
+  { key: 'auth-service', url: `${AUTH_URL}/health` },
+  { key: 'inventory-service', url: `${INVENTORY_URL}/health` },
+  { key: 'chat-service', url: `${process.env.CHAT_SERVICE_URL || 'http://chat-service:3003'}/health` },
+  { key: 'bff-web', url: 'http://bff-web:3000/health' },
+  { key: 'bff-admin', url: 'http://bff-admin:3000/health' },
+];
+
+// Monitoreo público: no requiere JWT ni rol admin.
+router.get('/observability/report', async (req, res) => {
+  const health = await Promise.all(monitoredServices.map(async (service) => {
+    const started = Date.now();
+    try {
+      const response = await axios.get(service.url, { timeout: 3000 });
+      return { service: service.key, status: 'UP', latencyMs: Date.now() - started, details: response.data };
+    } catch (error) {
+      return { service: service.key, status: 'DOWN', latencyMs: Date.now() - started, error: error.message };
+    }
+  }));
+  const query = async (promql) => {
+    try {
+      const response = await axios.get(`${PROMETHEUS_URL}/api/v1/query`, { params: { query: promql }, timeout: 4000 });
+      return response.data?.data?.result || [];
+    } catch { return []; }
+  };
+  const [up, requestRate, memory] = await Promise.all([
+    query('up'),
+    query('sum by (job) (rate(http_requests_total[5m]))'),
+    query('sum by (job) (process_resident_memory_bytes)'),
+  ]);
+  res.json({ generatedAt: new Date().toISOString(), health, metrics: { up, requestRate, memory }, links: { prometheus: process.env.PROMETHEUS_PUBLIC_URL || 'http://localhost:9090', grafana: process.env.GRAFANA_PUBLIC_URL || 'http://localhost:3004' } });
+});
+
+router.get('/observability/logs', async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 100, 300);
+  const service = String(req.query.service || '').replace(/[^a-zA-Z0-9_-]/g, '');
+  const query = service ? `{container=~".*${service}.*"}` : '{container=~".+"}';
+  try {
+    const response = await axios.get(`${LOKI_URL}/loki/api/v1/query_range`, {
+      params: { query, limit, direction: 'backward', start: String((Date.now() - 3600000) * 1000000), end: String(Date.now() * 1000000) },
+      timeout: 5000,
+    });
+    const logs = (response.data?.data?.result || []).flatMap(stream =>
+      (stream.values || []).map(([timestamp, line]) => ({ timestamp, line, labels: stream.stream }))
+    ).sort((a,b) => Number(BigInt(b.timestamp) - BigInt(a.timestamp))).slice(0, limit);
+    res.json({ logs });
+  } catch (error) {
+    res.status(502).json({ error: 'Loki no está disponible', details: error.message, logs: [] });
+  }
+});
+
 module.exports = router;

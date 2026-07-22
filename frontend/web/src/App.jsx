@@ -3,9 +3,11 @@ import { Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-r
 import { MessageCircle, LogIn, LogOut, LayoutGrid, User, Search, Eye, X, PackageCheck, CreditCard, Send, Wifi, WifiOff, ImageOff } from 'lucide-react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
+import { GoogleLogin } from '@react-oauth/google';
 
 const API_BASE = import.meta.env.VITE_API_BASE || (window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : 'https://apiwebav.nickval.dev/web/api');
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3003' : 'https://apiwebav.nickval.dev');
+const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
 const api = axios.create({ baseURL: API_BASE });
 
@@ -31,6 +33,15 @@ function useAuth() {
     return userData;
   };
 
+  const googleLogin = async (credential) => {
+    const res = await api.post('/auth/google', { credential });
+    const { token, user: userData } = res.data;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+    return userData;
+  };
+
   const signup = async (name, email, password) => {
     const res = await api.post('/auth/signup', { name, email, password });
     const { token, user: userData } = res.data;
@@ -46,7 +57,7 @@ function useAuth() {
     setUser(null);
   };
 
-  return { user, login, signup, logout, isAuthenticated: !!user };
+  return { user, login, googleLogin, signup, logout, isAuthenticated: !!user };
 }
 
 // --- Protected Route ---
@@ -89,7 +100,7 @@ function Navbar({ user, logout }) {
 }
 
 // --- Login Page ---
-function LoginPage({ onLogin, onSwitchToSignup }) {
+function LoginPage({ onLogin, onGoogleLogin, onSwitchToSignup }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -133,6 +144,28 @@ function LoginPage({ onLogin, onSwitchToSignup }) {
             {loading ? 'Ingresando...' : <><LogIn size={18}/> Iniciar Sesión</>}
           </button>
         </form>
+        <div className="oauth-divider"><span>o continúa con</span></div>
+        <div className="google-login-wrap">
+          {GOOGLE_ENABLED ? (
+            <GoogleLogin
+              onSuccess={(response) => {
+                if (!response.credential) {
+                  setError('Google no devolvió una credencial válida');
+                  return;
+                }
+                onGoogleLogin(response.credential).catch((err) => {
+                  setError(err.response?.data?.message || err.response?.data?.error || 'No se pudo iniciar sesión con Google');
+                });
+              }}
+              onError={() => setError('No se pudo iniciar sesión con Google')}
+              theme="filled_black"
+              shape="pill"
+              width="320"
+            />
+          ) : (
+            <div className="alert-error">Google OAuth no está configurado. Falta VITE_GOOGLE_CLIENT_ID en el build.</div>
+          )}
+        </div>
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem' }}>
           ¿No tienes cuenta?{' '}
           <button onClick={onSwitchToSignup} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontWeight: 600 }}>
@@ -145,7 +178,7 @@ function LoginPage({ onLogin, onSwitchToSignup }) {
 }
 
 // --- Signup Page ---
-function SignupPage({ onSignup, onSwitchToLogin }) {
+function SignupPage({ onSignup, onGoogleLogin, onSwitchToLogin }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -194,6 +227,29 @@ function SignupPage({ onSignup, onSwitchToLogin }) {
             {loading ? 'Creando cuenta...' : <><User size={18}/> Crear Cuenta</>}
           </button>
         </form>
+        <div className="oauth-divider"><span>o regístrate con</span></div>
+        <div className="google-login-wrap">
+          {GOOGLE_ENABLED ? (
+            <GoogleLogin
+              onSuccess={(response) => {
+                if (!response.credential) {
+                  setError('Google no devolvió una credencial válida');
+                  return;
+                }
+                onGoogleLogin(response.credential).catch((err) => {
+                  setError(err.response?.data?.message || err.response?.data?.error || 'No se pudo registrar con Google');
+                });
+              }}
+              onError={() => setError('No se pudo registrar con Google')}
+              theme="filled_black"
+              shape="pill"
+              text="signup_with"
+              width="320"
+            />
+          ) : (
+            <div className="alert-error">Google OAuth no está configurado. Falta VITE_GOOGLE_CLIENT_ID en el build.</div>
+          )}
+        </div>
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem' }}>
           ¿Ya tienes cuenta?{' '}
           <button onClick={onSwitchToLogin} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontWeight: 600 }}>
@@ -689,12 +745,12 @@ function ChatPage() {
 
 // --- Main App ---
 function App() {
-  const { user, login, signup, logout, isAuthenticated } = useAuth();
+  const { user, login, googleLogin, signup, logout, isAuthenticated } = useAuth();
   const [authMode, setAuthMode] = useState('login');
 
   if (!isAuthenticated) {
     return authMode === 'login'
-      ? <LoginPage onLogin={login} onSwitchToSignup={() => setAuthMode('signup')} />
+      ? <LoginPage onLogin={login} onGoogleLogin={googleLogin} onSwitchToSignup={() => setAuthMode('signup')} />
       : <SignupPage onSignup={signup} onSwitchToLogin={() => setAuthMode('login')} />;
   }
 

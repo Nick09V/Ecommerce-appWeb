@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Package, Users, Settings, LogOut, LogIn, Edit, Trash2, Plus, AlertTriangle, X, Save, ImageOff } from 'lucide-react';
+import { LayoutDashboard, Package, Users, Settings, LogOut, LogIn, Edit, Trash2, Plus, AlertTriangle, X, Save, ImageOff, Activity, Server, ExternalLink, RefreshCw, Terminal, Gauge } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_ADMIN_API_BASE || (window.location.hostname === 'localhost' ? 'http://localhost:3005/api' : 'https://apiwebav.nickval.dev/admin/api');
@@ -118,6 +118,7 @@ function Sidebar({ user, logout }) {
       <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1, marginTop: '1.5rem' }}>
         <Link to="/" style={linkStyle('/')}><LayoutDashboard size={20}/> Dashboard</Link>
         <Link to="/inventory" style={linkStyle('/inventory')}><Package size={20}/> Inventario</Link>
+        <Link to="/observability" style={linkStyle('/observability')}><Activity size={20}/> Monitoreo</Link>
         <Link to="/users" style={linkStyle('/users')}><Users size={20}/> Usuarios</Link>
         <Link to="/settings" style={linkStyle('/settings')}><Settings size={20}/> Ajustes</Link>
       </nav>
@@ -264,24 +265,70 @@ function InventoryPage() {
   );
 }
 
+
+
+function ObservabilityPage() {
+  const [report, setReport] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [service, setService] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const load = async () => {
+    setLoading(true); setError('');
+    try {
+      const [reportRes, logRes] = await Promise.all([
+        api.get('/observability/report'),
+        api.get('/observability/logs', { params: { service, limit: 120 } }),
+      ]);
+      setReport(reportRes.data); setLogs(logRes.data.logs || []);
+    } catch (err) { setError(err.response?.data?.error || 'No se pudo cargar el reporte de observabilidad.'); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, [service]);
+  const upCount = report?.health?.filter(item => item.status === 'UP').length || 0;
+  const total = report?.health?.length || 0;
+  const memoryByJob = Object.fromEntries((report?.metrics?.memory || []).map(item => [item.metric.job, Number(item.value?.[1] || 0)]));
+  const rateByJob = Object.fromEntries((report?.metrics?.requestRate || []).map(item => [item.metric.job, Number(item.value?.[1] || 0)]));
+  return <div className="animate-fade-in observability-page">
+    <div className="admin-page-heading"><div><h1>📡 Observabilidad</h1><p>Estado, métricas Prometheus y logs centralizados de los microservicios.</p></div><button className="btn btn-primary" onClick={load} disabled={loading}><RefreshCw size={17}/>{loading?'Actualizando...':'Actualizar'}</button></div>
+    {error && <div className="alert-error">{error}</div>}
+    <div className="stats-grid observability-stats">
+      <div className="glass stat-card"><Server size={24}/><h3>Servicios disponibles</h3><h2 className={upCount===total?'metric-ok':'metric-warn'}>{upCount}/{total}</h2></div>
+      <div className="glass stat-card"><Gauge size={24}/><h3>Solicitudes por segundo</h3><h2>{Object.values(rateByJob).reduce((a,b)=>a+b,0).toFixed(2)}</h2></div>
+      <div className="glass stat-card"><Activity size={24}/><h3>Reporte generado</h3><strong>{report?.generatedAt ? new Date(report.generatedAt).toLocaleTimeString() : '—'}</strong></div>
+    </div>
+    <div className="glass obs-section"><div className="obs-title"><h2>Salud de microservicios</h2><div className="obs-links"><a href={report?.links?.prometheus} target="_blank" rel="noreferrer">Prometheus <ExternalLink size={14}/></a><a href={report?.links?.grafana} target="_blank" rel="noreferrer">Grafana <ExternalLink size={14}/></a></div></div>
+      <div className="service-grid">{(report?.health||[]).map(item=><article className="service-card" key={item.service}><div><span className={`status-dot ${item.status==='UP'?'up':'down'}`}></span><strong>{item.service}</strong></div><span className={`status-pill ${item.status==='UP'?'up':'down'}`}>{item.status}</span><small>Latencia: {item.latencyMs} ms</small><small>Memoria: {memoryByJob[item.service] ? `${(memoryByJob[item.service]/1024/1024).toFixed(1)} MB` : 'sin datos'}</small><small>Req/s: {(rateByJob[item.service]||0).toFixed(3)}</small></article>)}</div>
+    </div>
+    <div className="glass obs-section"><div className="obs-title"><div><h2><Terminal size={19}/> Logs recientes</h2><p>Última hora, recopilados por Loki y Promtail.</p></div><select className="input log-filter" value={service} onChange={e=>setService(e.target.value)}><option value="">Todos los contenedores</option>{['auth-service','inventory-service','chat-service','bff-web','bff-admin','nginx'].map(v=><option key={v} value={v}>{v}</option>)}</select></div>
+      <div className="log-console">{logs.length===0?<div className="empty-logs">No hay logs disponibles todavía.</div>:logs.map((log,index)=><div className="log-line" key={`${log.timestamp}-${index}`}><time>{new Date(Number(BigInt(log.timestamp)/1000000n)).toLocaleTimeString()}</time><span className="log-service">{log.labels?.service||log.labels?.container||'container'}</span><code>{log.line}</code></div>)}</div>
+    </div>
+  </div>;
+}
+
 // --- Main App ---
 function App() {
   const { user, login, logout, isAuthenticated } = useAuth();
+  const location = useLocation();
+  const isPublicMonitoring = location.pathname === '/observability';
 
-  if (!isAuthenticated) {
+  // La pantalla de observabilidad es pública. El inventario y el resto del panel
+  // continúan protegidos y requieren una sesión de administrador.
+  if (!isAuthenticated && !isPublicMonitoring) {
     return <LoginPage onLogin={login} />;
   }
 
   return (
     <div className="dashboard-layout">
-      <Sidebar user={user} logout={logout} />
+      <Sidebar user={user || { name: 'Monitor público' }} logout={isAuthenticated ? logout : () => { window.location.href = '/'; }} />
       <main className="main-content">
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/inventory" element={<InventoryPage />} />
-          <Route path="/users" element={<div className="animate-fade-in"><h1>👥 Usuarios</h1><p>Gestión de usuarios (próximamente).</p></div>} />
-          <Route path="/settings" element={<div className="animate-fade-in"><h1>⚙️ Ajustes</h1><p>Configuración del sistema (próximamente).</p></div>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/" element={isAuthenticated ? <Dashboard /> : <Navigate to="/observability" replace />} />
+          <Route path="/inventory" element={isAuthenticated ? <InventoryPage /> : <Navigate to="/observability" replace />} />
+          <Route path="/observability" element={<ObservabilityPage />} />
+          <Route path="/users" element={isAuthenticated ? <div className="animate-fade-in"><h1>👥 Usuarios</h1><p>Gestión de usuarios (próximamente).</p></div> : <Navigate to="/observability" replace />} />
+          <Route path="/settings" element={isAuthenticated ? <div className="animate-fade-in"><h1>⚙️ Ajustes</h1><p>Configuración del sistema (próximamente).</p></div> : <Navigate to="/observability" replace />} />
+          <Route path="*" element={<Navigate to={isAuthenticated ? '/' : '/observability'} replace />} />
         </Routes>
       </main>
     </div>

@@ -4,8 +4,10 @@ const authRepository = require('../repositories/auth.repository');
 const { redisClient } = require('../config/redis');
 const { jwt: jwtConfig } = require('../config/env');
 const logger = require('../utils/logger');
+const { OAuth2Client } = require('google-auth-library');
 
 const SALT_ROUNDS = 12;
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const register = async ({ name, email, password }) => {
   const existing = await authRepository.findByEmail(email);
@@ -34,7 +36,7 @@ const register = async ({ name, email, password }) => {
     // No bloqueamos el registro si falla la publicación del evento
   }
 
-  const token = jwt.sign({ id: user.id, email: user.email }, jwtConfig.secret, {
+  const token = jwt.sign({ id: user.id, email: user.email, role: user.role || 'user' }, jwtConfig.secret, {
     expiresIn: jwtConfig.expiresIn,
   });
 
@@ -56,12 +58,44 @@ const login = async (email, password) => {
     throw error;
   }
 
-  const token = jwt.sign({ id: user.id, email: user.email }, jwtConfig.secret, {
+  const token = jwt.sign({ id: user.id, email: user.email, role: user.role || 'user' }, jwtConfig.secret, {
     expiresIn: jwtConfig.expiresIn,
   });
 
   const { password: _, ...safeUser } = user;
   return { user: safeUser, token };
+};
+
+
+const loginWithGoogle = async (credential) => {
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    const error = new Error('Google OAuth no está configurado en el servidor');
+    error.status = 503;
+    throw error;
+  }
+  const ticket = await googleClient.verifyIdToken({
+    idToken: credential,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+  const payload = ticket.getPayload();
+  if (!payload?.email || !payload.email_verified) {
+    const error = new Error('La cuenta de Google no tiene un correo verificado');
+    error.status = 401;
+    throw error;
+  }
+  const user = await authRepository.upsertOAuthUser({
+    name: payload.name || payload.email.split('@')[0],
+    email: payload.email.toLowerCase(),
+    provider: 'google',
+    providerId: payload.sub,
+    avatarUrl: payload.picture || null,
+  });
+  const token = jwt.sign(
+    { id: user.id, email: user.email, role: user.role || 'user' },
+    jwtConfig.secret,
+    { expiresIn: jwtConfig.expiresIn }
+  );
+  return { user, token };
 };
 
 const getProfile = async (userId) => {
@@ -120,4 +154,5 @@ module.exports = {
   getProfile,
   resetPassword,
   deleteAccount,
+  loginWithGoogle,
 };

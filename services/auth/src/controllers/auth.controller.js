@@ -21,6 +21,13 @@ const signin = async (req, res, next) => {
   }
 };
 
+const googleSignin = async (req, res, next) => {
+  try {
+    const result = await authService.loginWithGoogle(req.body.credential);
+    res.status(200).json(result);
+  } catch (error) { next(error); }
+};
+
 const getProfile = async (req, res, next) => {
   try {
     const user = await authService.getProfile(req.user.id);
@@ -78,6 +85,7 @@ const health = async (req, res) => {
 module.exports = {
   signup,
   signin,
+  googleSignin,
   getProfile,
   resetPassword,
   deleteAccount,

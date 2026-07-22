@@ -30,6 +30,15 @@ router.post('/auth/signup', async (req, res) => {
   }
 });
 
+router.post('/auth/google', async (req, res) => {
+  try {
+    const response = await axios.post(`${AUTH_URL}/auth/google`, req.body);
+    res.status(response.status).json(response.data);
+  } catch (err) {
+    res.status(err.response?.status || 500).json(err.response?.data || { error: 'Error en Google OAuth' });
+  }
+});
+
 router.post('/auth/signin', async (req, res) => {
   try {
     const response = await axios.post(`${AUTH_URL}/auth/signin`, req.body);

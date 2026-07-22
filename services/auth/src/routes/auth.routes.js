@@ -16,6 +16,7 @@ router.get('/health', authController.health);
 // Public routes
 router.post('/signup', signupRules, validate, authController.signup);
 router.post('/signin', signinRules, validate, authController.signin);
+router.post('/google', authController.googleSignin);
 router.post('/reset-password', resetPasswordRules, validate, authController.resetPassword);
 
 // Protected routes

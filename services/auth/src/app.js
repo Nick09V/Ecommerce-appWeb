@@ -7,7 +7,7 @@ const authRoutes = require("./routes/auth.routes");
 const errorHandler = require("./middlewares/errorHandler.middleware");
 const { getMetrics, trackRequest } = require("./utils/metrics");
 const { port, corsOrigin } = require("./config/env");
-const { connectPostgres } = require("./config/database");
+const { connectPostgres, pool } = require("./config/database");
 const { connectRedis } = require("./config/redis");
 const logger = require("./utils/logger");
 
@@ -37,6 +37,14 @@ app.use(errorHandler);
 const bootstrap = async () => {
   try {
     await connectPostgres();
+    await pool.query(`
+      ALTER TABLE auth_schema.users ALTER COLUMN password DROP NOT NULL;
+      ALTER TABLE auth_schema.users ADD COLUMN IF NOT EXISTS role VARCHAR(30) NOT NULL DEFAULT 'user';
+      ALTER TABLE auth_schema.users ADD COLUMN IF NOT EXISTS provider VARCHAR(30) NOT NULL DEFAULT 'local';
+      ALTER TABLE auth_schema.users ADD COLUMN IF NOT EXISTS provider_id VARCHAR(255);
+      ALTER TABLE auth_schema.users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+      UPDATE auth_schema.users SET role = 'admin' WHERE email = 'admin@tienda.com';
+    `);
     await connectRedis();
 
     app.listen(port, () => {

@@ -1,7 +1,6 @@
 version: "3.8"
 
 services:
-  # 1. Túnel Seguro
   cloudflared:
     image: cloudflare/cloudflared:latest
     command: tunnel run
@@ -11,7 +10,6 @@ services:
     networks:
       - app-network
 
-  # 2. Proxy Inverso / API Gateway
   nginx:
     image: nginx:alpine
     ports:
@@ -27,11 +25,13 @@ services:
     networks:
       - app-network
 
-  # 3. Interfaces de Usuario (Frontends)
   frontend-web:
-    build: ./frontend/web
+    build:
+      context: ./frontend/web
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
     ports:
-      - "3100:3000"  
+      - "3102:3000"
     restart: unless-stopped
     networks:
       - app-network
@@ -44,32 +44,38 @@ services:
     networks:
       - app-network
 
-# 4. Orquestadores (BFFs)
   bff-web:
     build: ./bff/web
     ports:
-      - "3000:3000"   # Mapea el 3000 interno al 3000 local
+      - "3000:3000"
     environment:
       - PORT=3000
       - AUTH_SERVICE_URL=http://auth-service:3001
       - INVENTORY_SERVICE_URL=http://inventory-service:3002
       - CHAT_SERVICE_URL=http://chat-service:3003
+      - PROMETHEUS_URL=http://prometheus:9090
+      - LOKI_URL=http://loki:3100
+      - PROMETHEUS_PUBLIC_URL=${PROMETHEUS_PUBLIC_URL:-http://localhost:9090}
+      - GRAFANA_PUBLIC_URL=${GRAFANA_PUBLIC_URL:-http://localhost:3004}
     networks:
       - app-network
 
   bff-admin:
     build: ./bff/admin
     ports:
-      - "3005:3000"   # Mapea el 3000 interno al 3004 local
+      - "3005:3000"
     environment:
       - PORT=3000
       - AUTH_SERVICE_URL=http://auth-service:3001
       - INVENTORY_SERVICE_URL=http://inventory-service:3002
       - CHAT_SERVICE_URL=http://chat-service:3003
+      - PROMETHEUS_URL=http://prometheus:9090
+      - LOKI_URL=http://loki:3100
+      - PROMETHEUS_PUBLIC_URL=${PROMETHEUS_PUBLIC_URL:-http://localhost:9090}
+      - GRAFANA_PUBLIC_URL=${GRAFANA_PUBLIC_URL:-http://localhost:3004}
     networks:
       - app-network
 
-  # 5. Microservicios Core
   auth-service:
     build: ./services/auth
     ports:
@@ -78,6 +84,7 @@ services:
       - DATABASE_URL=${AUTH_DB_URL}
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - PORT=3001
     depends_on:
       postgres:
@@ -121,7 +128,6 @@ services:
     networks:
       - app-network
 
-  # 6. Caché y Mensajería de Eventos
   redis:
     image: redis:alpine
     command: redis-server --appendonly yes
@@ -130,37 +136,61 @@ services:
     networks:
       - app-network
 
-  # 7. Monitoreo (SRE)
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml # Ruta al archivo que crearemos
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
     restart: unless-stopped
     networks:
-      - app-network 
+      - app-network
 
   grafana:
-      image: grafana/grafana:latest
-      container_name: grafana
-      ports:
-        - "3004:3000"
-      environment:
-        - GF_SECURITY_ADMIN_USER=admin
-        - GF_SECURITY_ADMIN_PASSWORD=admin
-      volumes:
-        - grafana_data:/var/lib/grafana
-        - ./grafana/provisioning:/etc/grafana/provisioning
-        - ./grafana/dashboards:/etc/grafana/dashboards # <-- CORREGIDO AQUÍ
-      depends_on:
-        - prometheus
-      restart: unless-stopped
-      networks:
-        - app-network
-  # 8. Base de Datos Local
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3004:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/etc/grafana/dashboards
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  loki:
+    image: grafana/loki:3.5.0
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  promtail:
+    image: grafana/promtail:3.5.0
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    restart: unless-stopped
+    networks:
+      - app-network
+
   postgres:
     image: postgres:15-alpine
     environment:
@@ -170,7 +200,6 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      # Mapeo del script init.sql para aislar los esquemas automáticamente
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -190,3 +219,4 @@ volumes:
   postgres_data:
   prometheus_data:
   grafana_data:
+  loki_data:
