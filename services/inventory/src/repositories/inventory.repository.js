@@ -2,7 +2,7 @@ const { pool } = require('../config/database');
 
 const findAll = async (filters = {}) => {
   let query = `
-    SELECT id, seller_id, title, price, stock, description, created_at 
+    SELECT id, seller_id, title, price, stock, description, image_url, created_at 
     FROM inventory_schema.products 
     WHERE 1=1
   `;
@@ -44,18 +44,18 @@ const findAll = async (filters = {}) => {
 
 const findById = async (id) => {
   const { rows } = await pool.query(
-    'SELECT id, seller_id, title, price, stock, description, created_at FROM inventory_schema.products WHERE id = $1',
+    'SELECT id, seller_id, title, price, stock, description, image_url, created_at FROM inventory_schema.products WHERE id = $1',
     [id]
   );
   return rows[0] || null;
 };
 
-const create = async ({ title, price, stock, description, sellerId }) => {
+const create = async ({ title, price, stock, description, imageUrl, sellerId }) => {
   const { rows } = await pool.query(
-    `INSERT INTO inventory_schema.products (seller_id, title, price, stock, description)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, seller_id, title, price, stock, description, created_at`,
-    [sellerId, title, price, stock, description || null]
+    `INSERT INTO inventory_schema.products (seller_id, title, price, stock, description, image_url)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id, seller_id, title, price, stock, description, image_url, created_at`,
+    [sellerId, title, price, stock, description || null, imageUrl || null]
   );
   return rows[0];
 };
@@ -66,10 +66,11 @@ const update = async (id, sellerId, updateData) => {
      SET title = COALESCE($1, title),
          price = COALESCE($2, price),
          stock = COALESCE($3, stock),
-         description = COALESCE($4, description)
-     WHERE id = $5 AND seller_id = $6
-     RETURNING id, seller_id, title, price, stock, description, created_at`,
-    [updateData.title, updateData.price, updateData.stock, updateData.description, id, sellerId]
+         description = COALESCE($4, description),
+         image_url = COALESCE($5, image_url)
+     WHERE id = $6 AND seller_id = $7
+     RETURNING id, seller_id, title, price, stock, description, image_url, created_at`,
+    [updateData.title, updateData.price, updateData.stock, updateData.description, updateData.imageUrl, id, sellerId]
   );
   return rows[0] || null;
 };

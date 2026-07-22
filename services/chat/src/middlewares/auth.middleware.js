@@ -7,17 +7,19 @@ const requireAuth = (req, res, next) => {
     return res.status(401).json({ message: 'Token de acceso requerido' });
   }
 
-  const token = authHeader.split(' ')[1];
+  const token = authHeader.slice(7).trim();
 
   try {
     const decoded = jwt.verify(token, jwtConfig.secret);
-    req.user = decoded;
+    const userId = Number(decoded.id ?? decoded.user_id ?? decoded.userId);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(401).json({ message: 'El token no contiene un usuario válido' });
+    }
+    req.user = { ...decoded, id: userId };
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Token inválido o expirado' });
   }
 };
 
-module.exports = {
-  requireAuth,
-};
+module.exports = { requireAuth };

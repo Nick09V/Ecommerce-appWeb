@@ -28,11 +28,11 @@ const getProduct = async (req, res, next) => {
 
 const createProduct = async (req, res, next) => {
   try {
-    const { title, price, stock, description } = req.body;
+    const { title, price, stock, description, image_url, imageUrl } = req.body;
     const sellerId = req.user.id;
 
     const newItem = await inventoryService.createProduct(
-      { title, price, stock, description },
+      { title, price, stock, description, imageUrl: image_url || imageUrl },
       sellerId
     );
 
@@ -46,12 +46,12 @@ const updateProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
     const sellerId = req.user.id;
-    const { title, price, stock, description } = req.body;
+    const { title, price, stock, description, image_url, imageUrl } = req.body;
 
     const updatedItem = await inventoryService.updateProduct(
       id,
       sellerId,
-      { title, price, stock, description }
+      { title, price, stock, description, imageUrl: image_url || imageUrl }
     );
 
     res.status(200).json({ product: updatedItem });

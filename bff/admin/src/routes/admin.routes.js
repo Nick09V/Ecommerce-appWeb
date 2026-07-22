@@ -61,6 +61,25 @@ router.get('/dashboard/summary', authenticateToken, async (req, res) => {
   }
 });
 
+// CRUD completo de inventario desde el Admin
+router.get('/inventory', authenticateToken, async (req, res) => {
+  try {
+    const response = await axios.get(`${INVENTORY_URL}/inventory`, { params: req.query, headers: buildHeaders(req) });
+    res.status(response.status).json(response.data);
+  } catch (err) {
+    res.status(err.response?.status || 500).json(err.response?.data || { error: 'Error al listar inventario' });
+  }
+});
+
+router.post('/inventory', authenticateToken, async (req, res) => {
+  try {
+    const response = await axios.post(`${INVENTORY_URL}/inventory`, req.body, { headers: buildHeaders(req) });
+    res.status(response.status).json(response.data);
+  } catch (err) {
+    res.status(err.response?.status || 500).json(err.response?.data || { error: 'Error al crear producto' });
+  }
+});
+
 // Gestión directa de inventario desde el Admin
 router.put('/inventory/:id', authenticateToken, async (req, res) => {
   try {

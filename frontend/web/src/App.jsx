@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { ShoppingCart, MessageCircle, LogIn, LogOut, LayoutGrid, User, Search, Star, ChevronRight } from 'lucide-react';
+import { MessageCircle, LogIn, LogOut, LayoutGrid, User, Search, Eye, X, PackageCheck, CreditCard, Send, Wifi, WifiOff, ImageOff } from 'lucide-react';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 
-const API_BASE = 'https://apiwebav.nickval.dev/web/api';
+const API_BASE = import.meta.env.VITE_API_BASE || (window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : 'https://apiwebav.nickval.dev/web/api');
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3003' : 'https://apiwebav.nickval.dev');
 
 const api = axios.create({ baseURL: API_BASE });
 
@@ -69,7 +71,6 @@ function Navbar({ user, logout }) {
         <div className="nav-links">
           <Link to="/" className={`nav-link ${isActive('/')}`}><LayoutGrid size={18}/> Catálogo</Link>
           <Link to="/chat" className={`nav-link ${isActive('/chat')}`}><MessageCircle size={18}/> Chat</Link>
-          <Link to="/cart" className={`nav-link ${isActive('/cart')}`}><ShoppingCart size={18}/> Carrito</Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <div style={{ width: 32, height: 32, borderRadius: 'var(--radius-full)', background: 'linear-gradient(135deg, var(--primary), #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700 }}>
@@ -204,13 +205,115 @@ function SignupPage({ onSignup, onSwitchToLogin }) {
   );
 }
 
+function ProductImage({ product, className = '' }) {
+  const [failed, setFailed] = useState(false);
+  const imageUrl = product.image_url || product.imageUrl || product.image;
+
+  if (!imageUrl || failed) {
+    return <div className={`image-fallback ${className}`}><ImageOff size={44} /><span>Sin imagen</span></div>;
+  }
+
+  return <img className={className} src={imageUrl} alt={product.title} loading="lazy" onError={() => setFailed(true)} />;
+}
+
+// --- Product Detail Modal ---
+function ProductDetailModal({ product, onClose, onBuy, onChat }) {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
+  const hasStock = Number(product.stock) > 0;
+
+  return (
+    <div className="modal-backdrop" onMouseDown={onClose} role="presentation">
+      <section
+        className="product-modal glass animate-fade-in"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-detail-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="product-modal-header">
+          <div>
+            <span className="product-modal-kicker">Detalle del producto</span>
+            <h2 id="product-detail-title">{product.title}</h2>
+          </div>
+          <button className="modal-close" onClick={onClose} aria-label="Cerrar detalle">
+            <X size={22} />
+          </button>
+        </div>
+
+        <div className="product-modal-content">
+          <div className="product-detail-image">
+            <ProductImage product={product} />
+          </div>
+
+          <div className="product-detail-info">
+            <div className="product-detail-price">${Number(product.price).toFixed(2)}</div>
+            <div className={`stock-badge ${hasStock ? 'in-stock' : 'out-stock'}`}>
+              <PackageCheck size={17} />
+              {hasStock ? `${product.stock} unidades disponibles` : 'Producto agotado'}
+            </div>
+
+            <div className="detail-section">
+              <h3>Descripción</h3>
+              <p>{product.description || 'Este producto no tiene una descripción disponible.'}</p>
+            </div>
+
+            <div className="product-data-grid">
+              <div>
+                <span>Código</span>
+                <strong>#{product.id}</strong>
+              </div>
+              <div>
+                <span>Precio</span>
+                <strong>${Number(product.price).toFixed(2)}</strong>
+              </div>
+              <div>
+                <span>Disponibilidad</span>
+                <strong>{hasStock ? 'En stock' : 'Agotado'}</strong>
+              </div>
+              <div>
+                <span>Unidades</span>
+                <strong>{Number(product.stock) || 0}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="product-modal-actions">
+          <button className="btn btn-primary" onClick={() => onBuy(product)} disabled={!hasStock}>
+            <CreditCard size={18} />
+            {hasStock ? 'Comprar' : 'Sin stock'}
+          </button>
+          <button className="btn btn-outline" onClick={() => onChat(product)}>
+            <MessageCircle size={18} /> Chatear con el vendedor
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 // --- Catalog Page ---
 function Catalog() {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
-  useState(() => {
+  useEffect(() => {
     api.get('/inventory').then(res => {
       const data = res.data;
       setProducts(Array.isArray(data) ? data : (data?.items || []));
@@ -226,47 +329,359 @@ function Catalog() {
     p.title?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleBuy = (product) => {
+    alert(`Compra iniciada para: ${product.title}`);
+  };
+
+  const handleChat = (product) => {
+    setSelectedProduct(null);
+    navigate('/chat', { state: { product } });
+  };
+
   return (
-    <div className="container animate-fade-in" style={{ paddingTop: '2rem', paddingBottom: '3rem' }}>
-      <div style={{ marginBottom: '2rem' }}>
+    <div className="container animate-fade-in catalog-page">
+      <div className="catalog-heading">
         <h1>Catálogo de Repuestos</h1>
         <p>Encuentra placas y repuestos de alta calidad para televisores.</p>
       </div>
 
-      <div style={{ position: 'relative', marginBottom: '2rem' }}>
-        <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-        <input className="input" placeholder="Buscar repuestos..." value={search} onChange={(e) => setSearch(e.target.value)}
-          style={{ paddingLeft: '3rem' }} />
+      <div className="catalog-search">
+        <Search size={20} />
+        <input className="input" placeholder="Buscar repuestos..." value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem' }}><p>Cargando productos...</p></div>
+        <div className="catalog-message"><p>Cargando productos...</p></div>
       ) : (
         <div className="product-grid">
-          {filtered.map((product) => (
-            <div key={product.id} className="product-card glass">
-              <div className="product-image">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
-                  <LayoutGrid size={40} />
+          {filtered.map((product) => {
+            const hasStock = Number(product.stock) > 0;
+
+            return (
+              <article
+                key={product.id}
+                className="product-card glass"
+                onClick={() => setSelectedProduct(product)}
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setSelectedProduct(product);
+                  }
+                }}
+              >
+                <div className="product-image">
+                  <ProductImage product={product} />
                 </div>
-              </div>
-              <div className="product-info">
-                <h3 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{product.title}</h3>
-                <p style={{ fontSize: '0.8rem', marginBottom: '0.75rem', minHeight: '2.4rem' }}>{product.description}</p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary)' }}>${Number(product.price).toFixed(2)}</span>
-                  <span style={{ fontSize: '0.75rem', color: Number(product.stock) > 0 ? 'var(--success)' : 'var(--danger)' }}>
-                    {Number(product.stock) > 0 ? `${product.stock} disponibles` : 'Agotado'}
-                  </span>
+                <div className="product-info">
+                  <h3>{product.title}</h3>
+                  <p>{product.description}</p>
+                  <div className="product-summary">
+                    <span className="product-price">${Number(product.price).toFixed(2)}</span>
+                    <span className={hasStock ? 'stock-text' : 'stock-text out'}>
+                      {hasStock ? `${product.stock} disponibles` : 'Agotado'}
+                    </span>
+                  </div>
+                  <button
+                    className="btn btn-primary product-detail-button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setSelectedProduct(product);
+                    }}
+                  >
+                    <Eye size={16} /> Ver detalles
+                  </button>
                 </div>
-                <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem', padding: '0.5rem' }}>
-                  <ShoppingCart size={16}/> Añadir al carrito
-                </button>
-              </div>
-            </div>
-          ))}
-          {filtered.length === 0 && <p style={{ gridColumn: '1 / -1', textAlign: 'center' }}>No se encontraron productos.</p>}
+              </article>
+            );
+          })}
+          {filtered.length === 0 && <p className="empty-products">No se encontraron productos.</p>}
         </div>
+      )}
+
+      {selectedProduct && (
+        <ProductDetailModal
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onBuy={handleBuy}
+          onChat={handleChat}
+        />
+      )}
+    </div>
+  );
+}
+
+function ChatPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const product = location.state?.product || null;
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const currentUserId = Number(currentUser.id || 0);
+  const partnerId = Number(product?.seller_id || location.state?.partnerId || 0);
+  const inventoryId = Number(product?.id || location.state?.inventoryId || 0);
+  const [messages, setMessages] = useState([]);
+  const [conversations, setConversations] = useState([]);
+  const [productsById, setProductsById] = useState({});
+  const [text, setText] = useState('');
+  const [connected, setConnected] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingInbox, setLoadingInbox] = useState(false);
+  const [error, setError] = useState('');
+  const socketRef = useRef(null);
+
+  const activeProduct = product || productsById[inventoryId] || null;
+
+  const messageKey = (item, index = 0) => {
+    const databaseId = item?.id ?? item?.chat_id;
+    if (databaseId !== undefined && databaseId !== null) {
+      return `msg-${databaseId}-${item?.sender_id ?? 's'}-${item?.receiver_id ?? 'r'}`;
+    }
+    return `msg-${item?.sender_id ?? 's'}-${item?.receiver_id ?? 'r'}-${item?.inventory_id ?? inventoryId}-${item?.created_at ?? item?.timestamp ?? index}-${index}`;
+  };
+
+  const appendMessage = (incoming) => {
+    setMessages((previous) => {
+      const incomingId = incoming?.id ?? incoming?.chat_id;
+      const exists = previous.some((item) => {
+        const currentId = item?.id ?? item?.chat_id;
+        if (incomingId !== undefined && incomingId !== null && currentId !== undefined && currentId !== null) {
+          return String(currentId) === String(incomingId)
+            && Number(item.sender_id) === Number(incoming.sender_id)
+            && Number(item.receiver_id) === Number(incoming.receiver_id);
+        }
+        return item.message === incoming.message
+          && Number(item.sender_id) === Number(incoming.sender_id)
+          && Number(item.receiver_id) === Number(incoming.receiver_id)
+          && String(item.created_at || item.timestamp || '') === String(incoming.created_at || incoming.timestamp || '');
+      });
+      return exists ? previous : [...previous, incoming];
+    });
+  };
+
+  const loadInbox = async () => {
+    setLoadingInbox(true);
+    setError('');
+
+    try {
+      // La bandeja no debe fallar solo porque el catálogo no esté disponible.
+      const inboxResponse = await api.get('/chat/inbox');
+      setConversations(Array.isArray(inboxResponse.data?.conversations)
+        ? inboxResponse.data.conversations
+        : []);
+    } catch (err) {
+      const detail = err.response?.data?.message || err.response?.data?.error;
+      setError(detail || 'No fue posible cargar tus conversaciones.');
+      setConversations([]);
+    }
+
+    try {
+      const inventoryResponse = await api.get('/inventory');
+      const products = inventoryResponse.data?.products || inventoryResponse.data || [];
+      if (Array.isArray(products)) {
+        setProductsById(Object.fromEntries(products.map((item) => [Number(item.id), item])));
+      }
+    } catch (err) {
+      // Los chats siguen visibles usando el identificador del producto.
+      console.warn('No se pudieron cargar los datos visuales de los productos:', err.response?.data || err.message);
+    } finally {
+      setLoadingInbox(false);
+    }
+  };
+
+  useEffect(() => {
+    loadInbox();
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return undefined;
+
+    const connectTimer = window.setTimeout(() => {
+      const socket = io(SOCKET_URL, {
+        auth: { token },
+        transports: ['polling', 'websocket'],
+        upgrade: true,
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 10000,
+      });
+
+      socketRef.current = socket;
+      socket.on('connect', () => {
+        setConnected(true);
+        setError('');
+      });
+      socket.on('disconnect', () => setConnected(false));
+      socket.on('connect_error', (err) => {
+        setConnected(false);
+        setError(`No se pudo conectar al chat: ${err.message}`);
+      });
+      socket.on('new_message', (message) => {
+        const participants = [Number(message.sender_id), Number(message.receiver_id)];
+        if (!participants.includes(currentUserId)) return;
+
+        loadInbox();
+        const sameProduct = !inventoryId || Number(message.inventory_id) === inventoryId;
+        const samePeople = !partnerId || participants.includes(partnerId);
+        if (sameProduct && samePeople && inventoryId && partnerId) appendMessage(message);
+      });
+    }, 0);
+
+    return () => {
+      window.clearTimeout(connectTimer);
+      if (socketRef.current) {
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [inventoryId, partnerId, currentUserId]);
+
+  useEffect(() => {
+    if (!inventoryId || !partnerId) {
+      setMessages([]);
+      return;
+    }
+    setLoading(true);
+    setError('');
+    api.get(`/chat/conversation/${inventoryId}`, { params: { user: partnerId } })
+      .then((res) => setMessages(res.data?.messages || []))
+      .catch((err) => setError(err.response?.data?.message || 'No fue posible cargar la conversación.'))
+      .finally(() => setLoading(false));
+  }, [inventoryId, partnerId]);
+
+  const openConversation = (conversation) => {
+    const otherUserId = Number(conversation.sender_id) === currentUserId
+      ? Number(conversation.receiver_id)
+      : Number(conversation.sender_id);
+    const conversationProduct = productsById[Number(conversation.inventory_id)] || null;
+    navigate('/chat', {
+      state: {
+        partnerId: otherUserId,
+        inventoryId: Number(conversation.inventory_id),
+        product: conversationProduct,
+      },
+    });
+  };
+
+  const sendMessage = async (event) => {
+    event.preventDefault();
+    const message = text.trim();
+    if (!message || !partnerId || !inventoryId) return;
+    setText('');
+    setError('');
+    try {
+      const response = await api.post('/chat/messages', { receiverId: partnerId, inventoryId, message });
+      const saved = response.data?.message;
+      if (saved) appendMessage(saved);
+      loadInbox();
+    } catch (err) {
+      setText(message);
+      setError(err.response?.data?.message || 'No se pudo enviar el mensaje.');
+    }
+  };
+
+  const showInbox = !partnerId || !inventoryId;
+
+  return (
+    <div className="container animate-fade-in chat-page">
+      <div className="chat-title-row">
+        <div>
+          <h1>💬 {showInbox ? 'Mis conversaciones' : 'Chat en tiempo real'}</h1>
+          <p>{showInbox ? 'Aquí aparecen los mensajes recibidos y enviados.' : `Conversación sobre: ${activeProduct?.title || `Producto #${inventoryId}`}`}</p>
+        </div>
+        <span className={`connection-state ${connected ? 'online' : ''}`}>
+          {connected ? <Wifi size={16}/> : <WifiOff size={16}/>} {connected ? 'Conectado' : 'Reconectando'}
+        </span>
+      </div>
+
+      {error && <div className="alert-error">{error}</div>}
+
+      {showInbox ? (
+        <section className="glass inbox-panel">
+          <div className="inbox-header">
+            <div>
+              <h2>Bandeja de chats</h2>
+              <p>Selecciona una conversación para responder.</p>
+            </div>
+            <button className="btn btn-outline inbox-refresh" onClick={loadInbox} disabled={loadingInbox}>
+              {loadingInbox ? 'Actualizando...' : 'Actualizar'}
+            </button>
+          </div>
+
+          {loadingInbox && conversations.length === 0 && <p className="chat-empty">Cargando conversaciones...</p>}
+          {!loadingInbox && conversations.length === 0 && (
+            <div className="chat-placeholder">
+              <MessageCircle size={48}/>
+              <p>Todavía no tienes conversaciones. Cuando alguien escriba por uno de tus productos, aparecerá aquí.</p>
+            </div>
+          )}
+
+          <div className="conversation-list">
+            {conversations.map((conversation, index) => {
+              const otherUserId = Number(conversation.sender_id) === currentUserId
+                ? Number(conversation.receiver_id)
+                : Number(conversation.sender_id);
+              const conversationProduct = productsById[Number(conversation.inventory_id)];
+              const isReceived = Number(conversation.receiver_id) === currentUserId;
+              return (
+                <button
+                  type="button"
+                  className="conversation-card"
+                  key={`conversation-${conversation.id}-${conversation.inventory_id}-${otherUserId}-${index}`}
+                  onClick={() => openConversation(conversation)}
+                >
+                  <div className="conversation-image">
+                    {conversationProduct ? <ProductImage product={conversationProduct}/> : <PackageCheck size={28}/>} 
+                  </div>
+                  <div className="conversation-main">
+                    <div className="conversation-topline">
+                      <strong>{conversationProduct?.title || `Producto #${conversation.inventory_id || 'sin identificar'}`}</strong>
+                      <time>{new Date(conversation.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</time>
+                    </div>
+                    <span className={`conversation-meta ${isReceived ? 'received' : 'sent'}`}>{isReceived ? `Recibido de Usuario #${otherUserId}` : `Enviado a Usuario #${otherUserId}`}</span>
+                    <p className="conversation-preview">{conversation.message}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ) : partnerId === currentUserId ? (
+        <div className="glass chat-placeholder"><p>Este producto te pertenece. No puedes iniciar una conversación contigo mismo.</p></div>
+      ) : (
+        <section className="glass chat-panel">
+          <div className="chat-toolbar">
+            <button className="btn btn-outline" onClick={() => navigate('/chat', { replace: true, state: null })}>← Volver a conversaciones</button>
+          </div>
+          {activeProduct && (
+            <header className="chat-product">
+              <div className="chat-product-image"><ProductImage product={activeProduct}/></div>
+              <div><strong>{activeProduct.title}</strong><span>${Number(activeProduct.price || 0).toFixed(2)}</span></div>
+            </header>
+          )}
+          <div className="message-list">
+            {loading && <p className="chat-empty">Cargando mensajes...</p>}
+            {!loading && messages.length === 0 && <p className="chat-empty">Todavía no hay mensajes. Inicia la conversación.</p>}
+            {messages.map((item, index) => {
+              const own = Number(item.sender_id) === currentUserId;
+              return (
+                <div className={`message-row ${own ? 'own' : ''}`} key={messageKey(item, index)}>
+                  <div className="message-bubble">
+                    <p>{item.message || item.text}</p>
+                    <time>{new Date(item.created_at || item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <form className="chat-form" onSubmit={sendMessage}>
+            <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Escribe un mensaje..." maxLength={500}/>
+            <button className="btn btn-primary" disabled={!text.trim()}><Send size={18}/> Enviar</button>
+          </form>
+        </section>
       )}
     </div>
   );
@@ -288,26 +703,7 @@ function App() {
       <Navbar user={user} logout={logout} />
       <Routes>
         <Route path="/" element={<Catalog />} />
-        <Route path="/chat" element={
-          <div className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
-            <h1>💬 Chat en Tiempo Real</h1>
-            <p>Contacta directamente con los vendedores para negociar precios.</p>
-            <div className="glass" style={{ padding: '2rem', textAlign: 'center', marginTop: '1rem' }}>
-              <MessageCircle size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem' }} />
-              <p>Selecciona un producto del catálogo para iniciar una conversación.</p>
-            </div>
-          </div>
-        } />
-        <Route path="/cart" element={
-          <div className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
-            <h1>🛒 Tu Carrito</h1>
-            <div className="glass" style={{ padding: '2rem', textAlign: 'center', marginTop: '1rem' }}>
-              <ShoppingCart size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem' }} />
-              <p>Tu carrito está vacío. Explora el catálogo para añadir productos.</p>
-              <Link to="/" className="btn btn-primary" style={{ marginTop: '1rem' }}>Ir al Catálogo <ChevronRight size={16}/></Link>
-            </div>
-          </div>
-        } />
+        <Route path="/chat" element={<ChatPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

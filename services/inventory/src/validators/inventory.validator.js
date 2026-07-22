@@ -12,9 +12,8 @@ const createProductRules = [
   body('stock')
     .notEmpty().withMessage('El stock es obligatorio')
     .isInt({ min: 0 }).withMessage('El stock debe ser un número entero mayor o igual a 0'),
-  body('description')
-    .optional()
-    .trim(),
+  body('description').optional().trim(),
+  body('image_url').optional({ checkFalsy: true }).isURL().withMessage('La imagen debe ser una URL válida'),
 ];
 
 const updateProductRules = [
@@ -33,6 +32,7 @@ const updateProductRules = [
   body('description')
     .optional()
     .trim(),
+  body('image_url').optional({ checkFalsy: true }).isURL().withMessage('La imagen debe ser una URL válida'),
 ];
 
 module.exports = {

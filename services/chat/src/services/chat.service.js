@@ -37,8 +37,11 @@ const sendMessage = async ({ senderId, receiverId, inventoryId, message }) => {
       chat_id: savedMessage.id,
       sender_id: senderId,
       receiver_id: receiverId,
+      inventory_id: savedMessage.inventory_id,
+      message: savedMessage.message,
       text: savedMessage.message,
-      timestamp: new Date().toISOString(),
+      created_at: savedMessage.created_at,
+      timestamp: savedMessage.created_at,
     });
     await redisClient.publish('chat.events', eventPayload);
     logger.info(`Evento NewMessage publicado para chat_id: ${savedMessage.id}`);

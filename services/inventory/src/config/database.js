@@ -15,6 +15,7 @@ pool.on('error', (error) => {
 const connectPostgres = async () => {
   try {
     const client = await pool.connect();
+    await client.query('ALTER TABLE inventory_schema.products ADD COLUMN IF NOT EXISTS image_url TEXT');
     client.release();
     logger.info('PostgreSQL connected (inventory_schema)');
     return pool;

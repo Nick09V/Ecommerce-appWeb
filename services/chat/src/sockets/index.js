@@ -43,9 +43,11 @@ function initSockets(server) {
         const payload = JSON.parse(message);
 
         if (payload.event === 'NewMessage') {
-          const room = `user_${payload.receiver_id}`;
-          io.to(room).emit('new_message', payload);
-          logger.info(`[Socket.io] Mensaje reemitido a la sala: ${room}`);
+          const receiverRoom = `user_${payload.receiver_id}`;
+          const senderRoom = `user_${payload.sender_id}`;
+          io.to(receiverRoom).emit('new_message', payload);
+          io.to(senderRoom).emit('new_message', payload);
+          logger.info(`[Socket.io] Mensaje reemitido a ${receiverRoom} y ${senderRoom}`);
         }
       } catch (error) {
         logger.error('Error parseando el mensaje de Redis Pub/Sub:', error);

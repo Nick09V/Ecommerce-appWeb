@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Package, Users, Settings, LogOut, LogIn, User, Edit, Trash2, Plus, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Package, Users, Settings, LogOut, LogIn, Edit, Trash2, Plus, AlertTriangle, X, Save, ImageOff } from 'lucide-react';
 import axios from 'axios';
 
-const API_BASE = 'https://apiwebav.nickval.dev/admin/api';
+const API_BASE = import.meta.env.VITE_ADMIN_API_BASE || (window.location.hostname === 'localhost' ? 'http://localhost:3005/api' : 'https://apiwebav.nickval.dev/admin/api');
 
 const api = axios.create({ baseURL: API_BASE });
 
@@ -133,7 +133,7 @@ function Dashboard() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useState(() => {
+  useEffect(() => {
     api.get('/dashboard/summary').then(res => {
       setSummary(res.data);
     }).catch(() => {
@@ -188,39 +188,78 @@ function Dashboard() {
 }
 
 // --- Inventory Management ---
+function ProductThumb({ product }) {
+  const [failed, setFailed] = useState(false);
+  if (!product.image_url || failed) return <div className="admin-thumb fallback"><ImageOff size={20}/></div>;
+  return <img className="admin-thumb" src={product.image_url} alt={product.title} onError={() => setFailed(true)}/>;
+}
+
+const emptyProduct = { title: '', price: '', stock: '', description: '', image_url: '' };
+
 function InventoryPage() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(emptyProduct);
+
+  const loadProducts = async () => {
+    setLoading(true); setError('');
+    try {
+      const res = await api.get('/inventory');
+      setProducts(Array.isArray(res.data) ? res.data : (res.data?.items || []));
+    } catch (err) {
+      setError(err.response?.data?.message || err.response?.data?.error || 'No se pudo cargar el inventario.');
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { loadProducts(); }, []);
+
+  const openCreate = () => { setEditing('new'); setForm(emptyProduct); };
+  const openEdit = (product) => {
+    setEditing(product.id);
+    setForm({ title: product.title || '', price: String(product.price ?? ''), stock: String(product.stock ?? ''), description: product.description || '', image_url: product.image_url || '' });
+  };
+  const closeModal = () => { setEditing(null); setForm(emptyProduct); setError(''); };
+
+  const submit = async (event) => {
+    event.preventDefault(); setSaving(true); setError('');
+    const payload = { ...form, price: Number(form.price), stock: Number(form.stock) };
+    try {
+      if (editing === 'new') await api.post('/inventory', payload);
+      else await api.put(`/inventory/${editing}`, payload);
+      closeModal(); await loadProducts();
+    } catch (err) {
+      setError(err.response?.data?.errors?.[0]?.msg || err.response?.data?.message || err.response?.data?.error || 'No se pudo guardar el producto.');
+    } finally { setSaving(false); }
+  };
+
+  const removeProduct = async (product) => {
+    if (!window.confirm(`¿Eliminar “${product.title}”? Esta acción no se puede deshacer.`)) return;
+    setError('');
+    try { await api.delete(`/inventory/${product.id}`); await loadProducts(); }
+    catch (err) { setError(err.response?.data?.message || err.response?.data?.error || 'No se pudo eliminar el producto.'); }
+  };
+
   return (
     <div className="animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div>
-          <h1>📦 Gestión de Inventario</h1>
-          <p>Administra los productos de la tienda.</p>
-        </div>
-        <button className="btn btn-primary"><Plus size={18}/> Nuevo Producto</button>
-      </div>
+      <div className="admin-page-heading"><div><h1>📦 Gestión de Inventario</h1><p>Crear, consultar, editar y eliminar productos.</p></div><button onClick={openCreate} className="btn btn-primary"><Plus size={18}/> Nuevo Producto</button></div>
+      {error && <div className="alert-error">{error}</div>}
       <div className="glass" style={{ padding: '1.5rem' }}>
-        <div className="table-wrapper">
-          <table>
-            <thead><tr><th>ID</th><th>Título</th><th>Precio</th><th>Stock</th><th>Acciones</th></tr></thead>
-            <tbody>
-              <tr>
-                <td>#1</td><td>Laptop Pro</td><td>$1,200.50</td><td>10</td>
-                <td style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}><Edit size={14}/></button>
-                  <button className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.3)' }}><Trash2 size={14}/></button>
-                </td>
-              </tr>
-              <tr>
-                <td>#2</td><td>Teclado Mecánico</td><td>$85.00</td><td>25</td>
-                <td style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}><Edit size={14}/></button>
-                  <button className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.3)' }}><Trash2 size={14}/></button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <div className="table-wrapper"><table><thead><tr><th>Imagen</th><th>ID</th><th>Título</th><th>Precio</th><th>Stock</th><th>Acciones</th></tr></thead>
+          <tbody>
+            {loading && <tr><td colSpan="6">Cargando productos...</td></tr>}
+            {!loading && products.length === 0 && <tr><td colSpan="6">No hay productos registrados.</td></tr>}
+            {products.map((product) => <tr key={product.id}><td><ProductThumb product={product}/></td><td>#{product.id}</td><td><strong>{product.title}</strong><small className="table-description">{product.description}</small></td><td>${Number(product.price).toFixed(2)}</td><td><span className={Number(product.stock) ? 'stock-ok' : 'stock-zero'}>{product.stock}</span></td><td><div className="action-buttons"><button onClick={() => openEdit(product)} className="btn btn-outline icon-btn" title="Editar"><Edit size={15}/></button><button onClick={() => removeProduct(product)} className="btn btn-outline icon-btn danger" title="Eliminar"><Trash2 size={15}/></button></div></td></tr>)}
+          </tbody></table></div>
       </div>
+
+      {editing && <div className="admin-modal-backdrop" onMouseDown={closeModal}><section className="glass admin-modal" onMouseDown={(e) => e.stopPropagation()}><header><div><span>{editing === 'new' ? 'Nuevo registro' : `Editando producto #${editing}`}</span><h2>{editing === 'new' ? 'Crear producto' : 'Actualizar producto'}</h2></div><button className="modal-x" onClick={closeModal}><X size={21}/></button></header>
+        <form onSubmit={submit}><div className="form-grid"><label>Título<input className="input" value={form.title} onChange={(e) => setForm({...form,title:e.target.value})} required maxLength="255"/></label><label>URL de imagen<input className="input" type="url" value={form.image_url} onChange={(e) => setForm({...form,image_url:e.target.value})} placeholder="https://..."/></label><label>Precio<input className="input" type="number" min="0.01" step="0.01" value={form.price} onChange={(e) => setForm({...form,price:e.target.value})} required/></label><label>Stock<input className="input" type="number" min="0" step="1" value={form.stock} onChange={(e) => setForm({...form,stock:e.target.value})} required/></label><label className="full">Descripción<textarea className="input textarea" value={form.description} onChange={(e) => setForm({...form,description:e.target.value})} rows="4"/></label></div>
+          {form.image_url && <div className="image-preview"><span>Vista previa</span><img src={form.image_url} alt="Vista previa"/></div>}
+          <footer><button type="button" onClick={closeModal} className="btn btn-outline">Cancelar</button><button disabled={saving} className="btn btn-primary"><Save size={17}/>{saving ? 'Guardando...' : 'Guardar'}</button></footer></form>
+      </section></div>}
     </div>
   );
 }

@@ -121,6 +121,8 @@ CREATE TABLE inventory_schema.products (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- <-- AGREGADO
 );
 
+ALTER TABLE inventory_schema.products ADD COLUMN IF NOT EXISTS image_url TEXT;
+
 ALTER TABLE inventory_schema.products OWNER TO inventory_user;
 
 -- Inserts iniciales (Semilla)

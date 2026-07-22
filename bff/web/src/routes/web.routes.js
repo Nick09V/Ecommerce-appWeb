@@ -116,7 +116,10 @@ router.get('/chat/inbox', authenticateToken, async (req, res) => {
     });
     res.status(response.status).json(response.data);
   } catch (err) {
-    res.status(err.response?.status || 500).json(err.response?.data || { error: 'Error en Chat' });
+    console.error('Error cargando bandeja de chat:', err.response?.data || err.message);
+    res.status(err.response?.status || 502).json(
+      err.response?.data || { message: 'El servicio de chat no pudo cargar las conversaciones' }
+    );
   }
 });
 

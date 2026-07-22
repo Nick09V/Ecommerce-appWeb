@@ -4,8 +4,9 @@ const getInbox = async (userId) => {
   const query = `
     SELECT * FROM (
       SELECT DISTINCT ON (
-        LEAST(m.sender_id, m.receiver_id), 
-        GREATEST(m.sender_id, m.receiver_id)
+        LEAST(m.sender_id, m.receiver_id),
+        GREATEST(m.sender_id, m.receiver_id),
+        COALESCE(m.inventory_id, 0)
       )
         m.id,
         m.sender_id,
@@ -16,8 +17,9 @@ const getInbox = async (userId) => {
       FROM chat_schema.messages m
       WHERE m.sender_id = $1 OR m.receiver_id = $1
       ORDER BY 
-        LEAST(m.sender_id, m.receiver_id), 
+        LEAST(m.sender_id, m.receiver_id),
         GREATEST(m.sender_id, m.receiver_id),
+        COALESCE(m.inventory_id, 0),
         m.created_at DESC
     ) AS subquery
     ORDER BY created_at DESC;
